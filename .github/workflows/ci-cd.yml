@@ -72,13 +72,20 @@ jobs:
       - name: Install dependencies
         run: npm install -g lighthouse chrome-launcher jq
 
-      - name: Run Lighthouse and save JSON report
+      - name: Start Server
+        run: npm run start &
+
+      - name: Check Server Availability
+        run: |
+          sleep 5 # サーバーが完全に起動するのを待つ
+          curl -I http://localhost:8081 || exit 1
+
+      - name: Run Lighthouse with security bypass
         run: |
           lighthouse http://localhost:8081 \
             --output=json \
             --output-path=./lighthouse-report.json \
-            --only-categories=performance,accessibility,best-practices,seo \
-            --chrome-flags="--headless"
+            --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage --ignore-certificate-errors --disable-features=BlockInsecurePrivateNetworkRequests"
 
       - name: Extract Lighthouse Scores to GITHUB_OUTPUT
         id: extract_scores
