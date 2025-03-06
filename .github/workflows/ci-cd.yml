@@ -52,6 +52,7 @@ jobs:
         with:
           path: public
           IgnoreAltMissing: true
+          IgnoreAltEmpty: true
 
 
 
