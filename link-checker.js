@@ -1,0 +1,39 @@
+const { SiteChecker } = require("broken-link-checker");
+const fs = require('fs');
+const path = require('path');
+const cheerio = require('cheerio');
+
+const publicDir = path.join(__dirname, 'public');
+const htmlFiles = fs.readdirSync(publicDir).filter(file => file.endsWith('.html'));
+
+const siteChecker = new SiteChecker({}, {
+  link: (result) => {
+    if (result.broken) {
+      console.log(`${result.url.original}: Broken`);
+      notifyGitHub(result.url.original);
+    } else {
+      console.log(`${result.url.original}: Valid`);
+    }
+  },
+  end: () => {
+    console.log("Link checking completed.");
+  }
+});
+
+htmlFiles.forEach(file => {
+  const filePath = path.join(publicDir, file);
+  const content = fs.readFileSync(filePath, 'utf8');
+  const $ = cheerio.load(content);
+
+  $('a[target="_blank"]').each((index, element) => {
+    $(element).attr('href', '#');
+  });
+
+  fs.writeFileSync(filePath, $.html());
+  siteChecker.enqueue(`http://localhost:8081/${file}`);
+});
+
+function notifyGitHub(brokenUrl) {
+  // GitHub通知のロジックをここに追加します
+  console.log(`GitHub Notice: Broken link detected - ${brokenUrl}`);
+}

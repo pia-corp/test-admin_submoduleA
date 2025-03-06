@@ -1,0 +1,88 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run HTMLHint
+        run: npx htmlhint public/**/*.html
+
+      - name: Run Stylelint
+        run: npx stylelint "public/assets/css/**/*.css"
+
+      - name: Run ESLint
+        run: npx eslint public/assets/js/**/*.js
+
+  link-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+
+      - name: Install dependencies
+        run: npm install axios cheerio
+
+      - name: Run link checker
+        run: node link-checker.js
+
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Start server
+        run: npx http-server -p 8080
+
+      - name: Run Lighthouse
+        run: node lighthouse-check.js
+
+  optimize-images:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '14'
+
+      - name: Install imagemin
+        run: npm install imagemin imagemin-mozjpeg imagemin-pngquant
+
+      - name: Optimize images
+        run: |
+          npx imagemin public/assets/images/* --out-dir=public/assets/images/
