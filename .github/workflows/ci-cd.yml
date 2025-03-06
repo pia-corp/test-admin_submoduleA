@@ -42,7 +42,23 @@ jobs:
 
       - name: Run link checker
         id: linkchecker_step
-        run: node link-checker.js
+        run: |
+          # curl https://htmltest.wjdp.uk | sudo bash -s -- -b /usr/local/bin
+          # npx http-server -p 8080 &
+          # node link-checker.js
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.0' # 必要に応じて Ruby のバージョンを指定
+
+      - name: Install htmltest
+        run: gem install htmltest
+
+      - name: Run htmltest
+        run: htmltest ./public
+
+
 
       - name: Use link checker Output
         run: |
