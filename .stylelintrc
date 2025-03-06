@@ -8,5 +8,6 @@
     "color-hex-length": "short",
     "block-no-empty": true,
     "unit-whitelist": ["em", "rem", "%", "s"]
-  }
+  },
+	"configBasedir": "./"
 }
