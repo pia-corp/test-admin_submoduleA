@@ -41,7 +41,12 @@ jobs:
         run: npm install
 
       - name: Run link checker
+        id: linkchecker_step
         run: node link-checker.js
+
+      - name: Use link checker Output
+        run: |
+          echo "link checker result string: ${{ steps.linkchecker_step.outputs.resultString }}"
 
       - name: Annotate broken links
         if: always()
