@@ -34,20 +34,14 @@ htmlFiles.forEach(file => {
 });
 
 function notifyGitHub(brokenUrl) {
-  // const outputPath = process.env.GITHUB_OUTPUT || '/tmp/github_output';
-  // const output = `broken_links=${brokenUrl}\n`;
+  const outputPath = process.env.GITHUB_OUTPUT || '/tmp/github_output';
+  const resultString = `${brokenUrl}\n`;
   // fs.appendFileSync(outputPath, output);
   // console.log(`GitHub Notice: Broken link detected - ${brokenUrl}`);
 
 
-  const resultString = "this is lighthouse result string";
+  // const resultString = "this is lighthouse result string";
   // 結果をGITHUB_OUTPUTに出力する。
-  fs.writeFileSync(process.env.GITHUB_OUTPUT, `resultString=${resultString}`);
+  fs.writeFileSync(outputPath, `resultString=${resultString}`);
   console.log('String generated and output to GITHUB_OUTPUT.');
 }
-
-
-const resultString = "this is lighthouse result string";
-// 結果をGITHUB_OUTPUTに出力する。
-fs.writeFileSync(process.env.GITHUB_OUTPUT, `resultString=${resultString}`);
-console.log('String generated and output to GITHUB_OUTPUT.');

@@ -46,7 +46,7 @@ jobs:
 
       - name: Use link checker Output
         run: |
-          echo "link checker result string: ${{ steps.linkchecker_step.outputs.resultString }}"
+          echo "link checker result string: ${{ steps.linkchecker_step.outputs.resultString }}" >> $GITHUB_OUTPUT
 
       - name: Annotate broken links
         if: always()
