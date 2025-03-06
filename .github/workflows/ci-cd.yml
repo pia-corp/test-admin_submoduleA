@@ -26,12 +26,6 @@ jobs:
       - name: Run HTMLHint
         run: npx htmlhint public/**/*.html
 
-      # - name: Run Stylelint
-      #   run: npx stylelint "public/assets/css/**/*.css"
-
-      # - name: Run ESLint
-      #   run: npx eslint public/assets/js/**/*.js
-
   link-check:
     runs-on: ubuntu-latest
     steps:
@@ -63,12 +57,6 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      # - name: Start server
-      #   run: npx http-server -p 8081
-
-      # - name: Run Lighthouse
-      #   run: node lighthouse-check.js
-
       - name: Install dependencies
         run: npm install -g lighthouse chrome-launcher jq
 
@@ -87,10 +75,14 @@ jobs:
             --output=json \
             --output-path=./lighthouse-report.json \
             --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage --ignore-certificate-errors --disable-features=BlockInsecurePrivateNetworkRequests"
-          echo "PERFORMANCE=$(jq '.categories.performance.score * 100' lighthouse-report.json)" >> "$GITHUB_OUTPUT"
-          echo "ACCESSIBILITY=$(jq '.categories.accessibility.score * 100' lighthouse-report.json)" >> "$GITHUB_OUTPUT"
-          echo "BEST_PRACTICES=$(jq '.categories[\"best-practices\"].score * 100' lighthouse-report.json)" >> "$GITHUB_OUTPUT"
-          echo "SEO=$(jq '.categories.seo.score * 100' lighthouse-report.json)" >> "$GITHUB_OUTPUT"
+          PERFORMANCE=$(jq '.categories.performance.score * 100' lighthouse-report.json)
+          ACCESSIBILITY=$(jq '.categories.accessibility.score * 100' lighthouse-report.json)
+          BEST_PRACTICES=$(jq '.categories["best-practices"].score * 100' lighthouse-report.json)
+          SEO=$(jq '.categories.seo.score * 100' lighthouse-report.json)
+          echo "::set-output name=PERFORMANCE::$PERFORMANCE"
+          echo "::set-output name=ACCESSIBILITY::$ACCESSIBILITY"
+          echo "::set-output name=BEST_PRACTICES::$BEST_PRACTICES"
+          echo "::set-output name=SEO::$SEO"
 
       - name: Show Lighthouse Scores in GitHub Actions log
         run: |
@@ -99,22 +91,3 @@ jobs:
           echo "♿ Accessibility: ${{ steps.extract_scores.outputs.ACCESSIBILITY }}"
           echo "🔍 SEO: ${{ steps.extract_scores.outputs.SEO }}"
           echo "🔧 Best Practices: ${{ steps.extract_scores.outputs.BEST_PRACTICES }}"
-
-
-  optimize-images:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 'latest'
-
-      - name: Install imagemin
-        run: npm install imagemin imagemin-mozjpeg imagemin-pngquant
-
-      - name: Optimize images
-        run: |
-          npx imagemin public/assets/images/* --out-dir=public/assets/images/
