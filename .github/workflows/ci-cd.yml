@@ -73,7 +73,7 @@ jobs:
         run: npm install -g lighthouse chrome-launcher jq
 
       - name: Start Server
-        run: npm run start &
+        run: npx http-server -p 8081 &
 
       - name: Check Server Availability
         run: |
