@@ -30,7 +30,7 @@ htmlFiles.forEach(file => {
   });
 
   fs.writeFileSync(filePath, $.html());
-  siteChecker.enqueue(`http://localhost:8081/${file}`);
+  siteChecker.enqueue(`http://127.0.0.1:8080/${file}`);
 });
 
 function notifyGitHub(brokenUrl) {
