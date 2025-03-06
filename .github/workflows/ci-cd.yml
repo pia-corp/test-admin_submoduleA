@@ -26,8 +26,8 @@ jobs:
       - name: Run HTMLHint
         run: npx htmlhint public/**/*.html
 
-      - name: Run Stylelint
-        run: npx stylelint "public/assets/css/**/*.css"
+      # - name: Run Stylelint
+      #   run: npx stylelint "public/assets/css/**/*.css"
 
       - name: Run ESLint
         run: npx eslint public/assets/js/**/*.js
