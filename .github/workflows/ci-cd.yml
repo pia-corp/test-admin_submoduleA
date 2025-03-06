@@ -81,15 +81,12 @@ jobs:
           curl -I http://localhost:8081 || exit 1
 
       - name: Run Lighthouse with security bypass
+        id: extract_scores
         run: |
           lighthouse http://localhost:8081 \
             --output=json \
             --output-path=./lighthouse-report.json \
             --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage --ignore-certificate-errors --disable-features=BlockInsecurePrivateNetworkRequests"
-
-      - name: Extract Lighthouse Scores to GITHUB_OUTPUT
-        id: extract_scores
-        run: |
           echo "PERFORMANCE=$(jq '.categories.performance.score * 100' lighthouse-report.json)" >> "$GITHUB_OUTPUT"
           echo "ACCESSIBILITY=$(jq '.categories.accessibility.score * 100' lighthouse-report.json)" >> "$GITHUB_OUTPUT"
           echo "BEST_PRACTICES=$(jq '.categories[\"best-practices\"].score * 100' lighthouse-report.json)" >> "$GITHUB_OUTPUT"
