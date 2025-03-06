@@ -34,6 +34,8 @@ htmlFiles.forEach(file => {
 });
 
 function notifyGitHub(brokenUrl) {
-  // GitHub通知のロジックをここに追加します
+  const outputPath = process.env.GITHUB_OUTPUT || '/tmp/github_output';
+  const output = `broken_links=${brokenUrl}\n`;
+  fs.appendFileSync(outputPath, output);
   console.log(`GitHub Notice: Broken link detected - ${brokenUrl}`);
 }

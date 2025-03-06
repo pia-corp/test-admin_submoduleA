@@ -57,21 +57,18 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Install dependencies
-        run: npm install -g lighthouse chrome-launcher jq
-
       - name: Start Server
-        run: npx http-server -p 8081 &
+        run: npx http-server -p 8080 &
 
       - name: Check Server Availability
         run: |
           sleep 5 # サーバーが完全に起動するのを待つ
-          curl -I http://localhost:8081 || exit 1
+          curl -I http://localhost:8080 || exit 1
 
       - name: Run Lighthouse with security bypass
         id: extract_scores
         run: |
-          lighthouse http://localhost:8081 \
+          lighthouse http://localhost:8080 \
             --output=json \
             --output-path=./lighthouse-report.json \
             --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage --ignore-certificate-errors --disable-features=BlockInsecurePrivateNetworkRequests"
