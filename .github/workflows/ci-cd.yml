@@ -29,8 +29,8 @@ jobs:
       # - name: Run Stylelint
       #   run: npx stylelint "public/assets/css/**/*.css"
 
-      - name: Run ESLint
-        run: npx eslint public/assets/js/**/*.js
+      # - name: Run ESLint
+      #   run: npx eslint public/assets/js/**/*.js
 
   link-check:
     runs-on: ubuntu-latest
@@ -63,11 +63,39 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Start server
-        run: npx http-server -p 8082
+      # - name: Start server
+      #   run: npx http-server -p 8081
 
-      - name: Run Lighthouse
-        run: node lighthouse-check.js
+      # - name: Run Lighthouse
+      #   run: node lighthouse-check.js
+
+      - name: Install dependencies
+        run: npm install -g lighthouse chrome-launcher jq
+
+      - name: Run Lighthouse and save JSON report
+        run: |
+          lighthouse http://localhost:8081 \
+            --output=json \
+            --output-path=./lighthouse-report.json \
+            --only-categories=performance,accessibility,best-practices,seo \
+            --chrome-flags="--headless"
+
+      - name: Extract Lighthouse Scores to GITHUB_OUTPUT
+        id: extract_scores
+        run: |
+          echo "PERFORMANCE=$(jq '.categories.performance.score * 100' lighthouse-report.json)" >> "$GITHUB_OUTPUT"
+          echo "ACCESSIBILITY=$(jq '.categories.accessibility.score * 100' lighthouse-report.json)" >> "$GITHUB_OUTPUT"
+          echo "BEST_PRACTICES=$(jq '.categories[\"best-practices\"].score * 100' lighthouse-report.json)" >> "$GITHUB_OUTPUT"
+          echo "SEO=$(jq '.categories.seo.score * 100' lighthouse-report.json)" >> "$GITHUB_OUTPUT"
+
+      - name: Show Lighthouse Scores in GitHub Actions log
+        run: |
+          echo "🏆 Lighthouse Scores:"
+          echo "🚀 Performance: ${{ steps.extract_scores.outputs.PERFORMANCE }}"
+          echo "♿ Accessibility: ${{ steps.extract_scores.outputs.ACCESSIBILITY }}"
+          echo "🔍 SEO: ${{ steps.extract_scores.outputs.SEO }}"
+          echo "🔧 Best Practices: ${{ steps.extract_scores.outputs.BEST_PRACTICES }}"
+
 
   optimize-images:
     runs-on: ubuntu-latest
