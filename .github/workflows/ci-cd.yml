@@ -43,6 +43,15 @@ jobs:
       - name: Run link checker
         run: node link-checker.js
 
+      - name: Annotate broken links
+        if: always()
+        run: |
+          if [ -f /tmp/github_output ]; then
+            while IFS= read -r line; do
+              echo "::error file=link-checker.js::Broken link detected: $line"
+            done < /tmp/github_output
+          fi
+
   lighthouse:
     runs-on: ubuntu-latest
     steps:
