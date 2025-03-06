@@ -1,7 +1,11 @@
 module.exports = {
-  env: {
-    browser: true,
-    es2021: true,
+  languageOptions: {
+    globals: {
+      window: true,
+      document: true,
+      global: true,
+      process: true,
+    },
   },
   extends: 'eslint:recommended',
   parserOptions: {
