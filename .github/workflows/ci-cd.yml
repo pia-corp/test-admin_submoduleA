@@ -30,10 +30,9 @@ jobs:
           sleep 5
 
       - name: Run link checker
-        id: link_checker
+        id: link-checker
         run: node link-checker.js
 
-      - name: Show broken links as JSON
+      - name: Display broken links
         run: |
-          echo "Broken links JSON: ${{ steps.link_checker.outputs.errors }}"
-          # echo "${{ fromJson(steps.link_checker.outputs.errors) }}"
+          echo "Errors found: ${{ steps.link-checker.outputs.errors }}"
