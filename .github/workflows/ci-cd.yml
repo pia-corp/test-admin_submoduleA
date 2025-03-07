@@ -53,6 +53,22 @@ jobs:
           path: public
           config: .htmltest.yml
 
+      - name: Extract internal link errors
+        run: |
+          # HTMLTEST_LOG を取得
+          HTMLTEST_LOG=$(cat $GITHUB_WORKSPACE/htmltest.log)
+
+          # 内部リンクエラーのみ抽出（"target does not exist" かつ http を含まない）
+          INTERNAL_ERRORS=$(echo "$HTMLTEST_LOG" | grep -E 'target does not exist' | grep -v 'http' || true)
+
+          # GITHUB_OUTPUT に設定
+          echo "internal_link_errors<<EOF" >> $GITHUB_ENV
+          echo "$INTERNAL_ERRORS" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Show Internal Link Errors
+        run: echo "$internal_link_errors"
+
 
 
       - name: Use link checker Output
