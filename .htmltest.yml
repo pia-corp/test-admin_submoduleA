@@ -1,3 +1,4 @@
+CheckFavicon: true
 IgnoreAltMissing: true
 IgnoreAltEmpty: true
 IgnoreExternalBrokenLinks: true

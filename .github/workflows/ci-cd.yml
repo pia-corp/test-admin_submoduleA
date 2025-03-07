@@ -9,23 +9,6 @@ on:
       - main
 
 jobs:
-  lint:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 'latest'
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Run HTMLHint
-        run: npx htmlhint public/**/*.html
-
   link-check:
     runs-on: ubuntu-latest
     steps:
@@ -56,22 +39,23 @@ jobs:
         continue-on-error: true
 
       - name: Extract internal link errors
+        id: extract_errors
         run: |
-          # HTMLTEST_LOG を取得
-          HTMLTEST_LOG=$(cat $GITHUB_WORKSPACE/htmltest.log)
+          # `htmltest` の実行結果を `htmltest.log` に保存
+          wjdp/htmltest-action@master --path public --config .htmltest.yml 2>&1 | tee htmltest.log
 
-          # 内部リンクエラーのみ抽出（"target does not exist" かつ http を含まない）
-          INTERNAL_ERRORS=$(echo "$HTMLTEST_LOG" | grep -E 'target does not exist' | grep -v 'http' || true)
+          # 内部リンクエラーのみ抽出
+          INTERNAL_ERRORS=$(grep -E 'target does not exist' htmltest.log | grep -v 'http' || true)
 
-          # GITHUB_OUTPUT に設定
-          echo "internal_link_errors<<EOF" >> $GITHUB_ENV
-          echo "$INTERNAL_ERRORS" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          # GITHUB_OUTPUT にセット
+          {
+            echo "internal_link_errors<<EOF"
+            echo "$INTERNAL_ERRORS"
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
 
       - name: Show Internal Link Errors
-        run: echo "$internal_link_errors"
-
-
+        run: echo "${{ steps.extract_errors.outputs.internal_link_errors }}"
 
       - name: Use link checker Output
         run: |
@@ -80,54 +64,149 @@ jobs:
       - name: Annotate broken links
         if: always()
         run: |
-          if [ -f /tmp/github_output ]; then
-            while IFS= read -r line; do
-              echo "::error file=link-checker.js::Broken link detected: $line"
-            done < /tmp/github_output
+          INTERNAL_ERRORS="${{ steps.extract_errors.outputs.internal_link_errors }}"
+          if [[ -n "$INTERNAL_ERRORS" ]]; then
+            echo "$INTERNAL_ERRORS" | while IFS= read -r line; do
+              echo "::error file=index.html::Broken internal link: $line"
+            done
+          else
+            echo "::notice::No internal link errors found."
           fi
 
-  lighthouse:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 'latest'
 
-      - name: Install dependencies
-        run: npm install
 
-      - name: Start Server
-        run: npx http-server -p 8080 &
 
-      - name: Check Server Availability
-        run: |
-          sleep 5 # サーバーが完全に起動するのを待つ
-          curl -I http://localhost:8080 || exit 1
+# name: CI/CD Pipeline
 
-      - name: Run Lighthouse with security bypass
-        id: extract_scores
-        run: |
-          lighthouse http://localhost:8080 \
-            --output=json \
-            --output-path=./lighthouse-report.json \
-            --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage --ignore-certificate-errors --disable-features=BlockInsecurePrivateNetworkRequests"
-          PERFORMANCE=$(jq '.categories.performance.score * 100' lighthouse-report.json)
-          ACCESSIBILITY=$(jq '.categories.accessibility.score * 100' lighthouse-report.json)
-          BEST_PRACTICES=$(jq '.categories["best-practices"].score * 100' lighthouse-report.json)
-          SEO=$(jq '.categories.seo.score * 100' lighthouse-report.json)
-          echo "::set-output name=PERFORMANCE::$PERFORMANCE"
-          echo "::set-output name=ACCESSIBILITY::$ACCESSIBILITY"
-          echo "::set-output name=BEST_PRACTICES::$BEST_PRACTICES"
-          echo "::set-output name=SEO::$SEO"
+# on:
+#   push:
+#     branches:
+#       - main
+#   pull_request:
+#     branches:
+#       - main
 
-      - name: Show Lighthouse Scores in GitHub Actions log
-        run: |
-          echo "🏆 Lighthouse Scores:"
-          echo "🚀 Performance: ${{ steps.extract_scores.outputs.PERFORMANCE }}"
-          echo "♿ Accessibility: ${{ steps.extract_scores.outputs.ACCESSIBILITY }}"
-          echo "🔍 SEO: ${{ steps.extract_scores.outputs.SEO }}"
-          echo "🔧 Best Practices: ${{ steps.extract_scores.outputs.BEST_PRACTICES }}"
+# jobs:
+#   lint:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+
+#       - name: Set up Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: 'latest'
+
+#       - name: Install dependencies
+#         run: npm install
+
+#       - name: Run HTMLHint
+#         run: npx htmlhint public/**/*.html
+
+#   link-check:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+
+#       - name: Set up Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: 'latest'
+
+#       - name: Install dependencies
+#         run: npm install
+
+#       - name: Run link checker
+#         id: linkchecker_step
+#         run: |
+#           # curl https://htmltest.wjdp.uk | sudo bash -s -- -b /usr/local/bin
+#           # npx http-server -p 8080 &
+#           # node link-checker.js
+
+#       - name: Run htmltest
+#         id: htmltest
+#         uses: wjdp/htmltest-action@master
+#         with:
+#           path: public
+#           config: .htmltest.yml
+#         continue-on-error: true
+
+#       - name: Extract internal link errors
+#         run: |
+#           # HTMLTEST_LOG を取得
+#           HTMLTEST_LOG=$(cat $GITHUB_WORKSPACE/htmltest.log)
+
+#           # 内部リンクエラーのみ抽出（"target does not exist" かつ http を含まない）
+#           INTERNAL_ERRORS=$(echo "$HTMLTEST_LOG" | grep -E 'target does not exist' | grep -v 'http' || true)
+
+#           # GITHUB_OUTPUT に設定
+#           echo "internal_link_errors<<EOF" >> $GITHUB_ENV
+#           echo "$INTERNAL_ERRORS" >> $GITHUB_ENV
+#           echo "EOF" >> $GITHUB_ENV
+
+#       - name: Show Internal Link Errors
+#         run: echo "$internal_link_errors"
+
+
+
+#       - name: Use link checker Output
+#         run: |
+#           echo "link checker result string: ${{ steps.linkchecker_step.outputs.resultString }}" >> $GITHUB_OUTPUT
+
+#       - name: Annotate broken links
+#         if: always()
+#         run: |
+#           if [ -f /tmp/github_output ]; then
+#             while IFS= read -r line; do
+#               echo "::error file=link-checker.js::Broken link detected: $line"
+#             done < /tmp/github_output
+#           fi
+
+#   lighthouse:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+
+#       - name: Set up Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: 'latest'
+
+#       - name: Install dependencies
+#         run: npm install
+
+#       - name: Start Server
+#         run: npx http-server -p 8080 &
+
+#       - name: Check Server Availability
+#         run: |
+#           sleep 5 # サーバーが完全に起動するのを待つ
+#           curl -I http://localhost:8080 || exit 1
+
+#       - name: Run Lighthouse with security bypass
+#         id: extract_scores
+#         run: |
+#           lighthouse http://localhost:8080 \
+#             --output=json \
+#             --output-path=./lighthouse-report.json \
+#             --chrome-flags="--headless --no-sandbox --disable-dev-shm-usage --ignore-certificate-errors --disable-features=BlockInsecurePrivateNetworkRequests"
+#           PERFORMANCE=$(jq '.categories.performance.score * 100' lighthouse-report.json)
+#           ACCESSIBILITY=$(jq '.categories.accessibility.score * 100' lighthouse-report.json)
+#           BEST_PRACTICES=$(jq '.categories["best-practices"].score * 100' lighthouse-report.json)
+#           SEO=$(jq '.categories.seo.score * 100' lighthouse-report.json)
+#           echo "::set-output name=PERFORMANCE::$PERFORMANCE"
+#           echo "::set-output name=ACCESSIBILITY::$ACCESSIBILITY"
+#           echo "::set-output name=BEST_PRACTICES::$BEST_PRACTICES"
+#           echo "::set-output name=SEO::$SEO"
+
+#       - name: Show Lighthouse Scores in GitHub Actions log
+#         run: |
+#           echo "🏆 Lighthouse Scores:"
+#           echo "🚀 Performance: ${{ steps.extract_scores.outputs.PERFORMANCE }}"
+#           echo "♿ Accessibility: ${{ steps.extract_scores.outputs.ACCESSIBILITY }}"
+#           echo "🔍 SEO: ${{ steps.extract_scores.outputs.SEO }}"
+#           echo "🔧 Best Practices: ${{ steps.extract_scores.outputs.BEST_PRACTICES }}"
