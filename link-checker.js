@@ -45,6 +45,7 @@ async function notifyGitHub(brokenUrl) {
     auth: process.env.GITHUB_TOKEN
   });
 
+  console.log(`GITHUB_REPOSITORY: ${process.env.GITHUB_REPOSITORY}`);
   const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
 
   await octokit.issues.create({
