@@ -35,7 +35,7 @@ jobs:
         id: extract_errors
         run: |
           # `htmltest.log` が存在するか確認
-          LOG_FILE="${{ github.workspace }}/tmp/htmltest.log"
+          LOG_FILE="tmp/htmltest.log"
           if [[ ! -f "$LOG_FILE" ]]; then
             echo "htmltest.log not found. Skipping extraction."
             echo "internal_link_errors=" >> $GITHUB_OUTPUT
