@@ -49,4 +49,5 @@ async function notifyGitHub(brokenUrls) {
     fs.appendFileSync(outputPath, `errors=${errors}\n`);
   }
   console.log(`GitHub Notice: Broken links detected - ${brokenUrls}`);
+  console.log(`GitHub Notice: Broken links detected - ${errors}`);
 }
