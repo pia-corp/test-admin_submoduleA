@@ -18,13 +18,14 @@ const siteChecker = new SiteChecker({
   link: (result) => {
     if (result.broken) {
       console.log(`${result.url.original}: Broken`);
-      brokenLinks.push(`${result.url.original}`);
+      brokenLinks.push(result.url.original);
     }
   },
   end: () => {
     console.log("Link checking completed.");
 
     // JSON.stringify で文字列化し、エスケープ処理を行う
-    fs.appendFileSync(outputPath, `errors=${JSON.stringify(brokenLinks).replace(/"/g, '\\"')}\n`);
+    fs.appendFileSync(outputPath, `errors=${brokenLinks}\n`);
+    // fs.appendFileSync(outputPath, `errors=${JSON.stringify(brokenLinks).replace(/"/g, '\\"')}\n`);
   }
 });

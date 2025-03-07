@@ -36,4 +36,4 @@ jobs:
       - name: Show broken links as JSON
         run: |
           echo "Broken links JSON: ${{ steps.link_checker.outputs.errors }}"
-          echo "${{ fromJson(steps.link_checker.outputs.errors) }}"
+          # echo "${{ fromJson(steps.link_checker.outputs.errors) }}"
