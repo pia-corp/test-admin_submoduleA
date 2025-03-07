@@ -18,7 +18,7 @@ const siteChecker = new SiteChecker({
   link: (result) => {
     if (result.broken) {
       console.log(`${result.url.original}: Broken`);
-      brokenLinks.push(result.url.original);
+      brokenLinks.push(`${result.url.original}`);
     }
   },
   end: () => {
