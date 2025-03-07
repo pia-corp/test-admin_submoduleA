@@ -9,6 +9,14 @@ const htmlFiles = fs.readdirSync(publicDir).filter(file => file.endsWith('.html'
 const brokenLinks = {};
 const checkedFiles = [];
 
+function removeDuplicateLinks(brokenLinks) {
+  for (const file in brokenLinks) {
+    if (brokenLinks.hasOwnProperty(file)) {
+      brokenLinks[file] = [...new Set(brokenLinks[file])];
+    }
+  }
+}
+
 const siteChecker = new SiteChecker({
   excludeExternalLinks: true,
   excludeLinksToSamePage: true,
@@ -32,6 +40,7 @@ const siteChecker = new SiteChecker({
   },
   end: async () => {
     console.log("Link checking completed.");
+    removeDuplicateLinks(brokenLinks); // 重複を削除
     await notifyGitHub(brokenLinks);
     console.log("Checked files:");
     checkedFiles.forEach(file => console.log(file));
