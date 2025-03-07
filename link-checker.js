@@ -6,6 +6,7 @@ const cheerio = require('cheerio');
 const publicDir = path.join(__dirname, 'public');
 const htmlFiles = fs.readdirSync(publicDir).filter(file => file.endsWith('.html'));
 let dataArray = [];
+let outputPath;
 
 const siteChecker = new SiteChecker({
   excludeExternalLinks: true,
@@ -26,6 +27,8 @@ const siteChecker = new SiteChecker({
   end: () => {
     console.log("Link checking completed.");
     console.log(dataArray);
+    // JSON.stringify(dataArray);
+    return JSON.stringify(dataArray);
   }
 });
 
@@ -45,7 +48,7 @@ htmlFiles.forEach(file => {
 async function notifyGitHub(brokenUrl) {
   const outputPath = process.env.GITHUB_OUTPUT;
   if (outputPath) {
-    fs.appendFileSync(outputPath, `errors=${brokenUrl}\n`);
+    // fs.appendFileSync(outputPath, `errors=${brokenUrl}\n`);
     // fs.appendFileSync(outputPath, `broken_link=${brokenUrl}\n`);
   }
   // console.log(`GitHub Notice: Broken link detected - ${errors}`);
