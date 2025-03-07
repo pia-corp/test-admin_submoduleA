@@ -37,5 +37,5 @@ jobs:
 
       - name: Display broken links
         run: |
-          echo "data.json"
+          echo $(jq -r "data.json")
           echo "Errors found: ${{ steps.link-checker.outputs.errors }}"
