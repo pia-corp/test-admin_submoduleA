@@ -35,4 +35,10 @@ jobs:
 
       - name: Display broken links
         run: |
-          echo "Errors found: ${{ steps.link-checker.outputs.errors }}"
+          if [ -f $GITHUB_OUTPUT ]; then
+            while IFS= read -r line; do
+              echo "Error: $line"
+            done < $GITHUB_OUTPUT
+          else
+            echo "No broken links found."
+          fi
