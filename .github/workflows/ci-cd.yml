@@ -9,81 +9,36 @@ on:
       - main
 
 jobs:
-  link-check:
+  check_links:
     runs-on: ubuntu-latest
+
     steps:
-      - name: Checkout code
+      # リポジトリをチェックアウト
+      - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Node.jsをセットアップ
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 'latest'
+          node-version: 'latest'  # 任意のNode.jsバージョンを指定
 
+      # npm依存関係をインストール
       - name: Install dependencies
         run: npm install
 
-      - name: Install htmltest
+      # broken-link-checkerを使ってリンクをチェック
+      - name: Run broken link checker
         run: |
-          curl -L -o htmltest.tar.gz https://github.com/wjdp/htmltest/releases/latest/download/htmltest-linux-amd64.tar.gz
-          tar -xzf htmltest.tar.gz
-          sudo mv htmltest /usr/local/bin/
-          rm htmltest.tar.gz
-          chmod +x /usr/local/bin/htmltest
+          npx broken-link-checker --input=./ --output=json > result.json || true
 
-      - name: Check htmltest version
-        run: htmltest --version
-
-      - name: Run htmltest and save log
+      # 結果を表示してGITHUB_OUTPUTにエラーを出力
+      - name: Show broken links and set output
         run: |
-          htmltest public -c .htmltest.yml 2>&1 | tee $GITHUB_WORKSPACE/htmltest.log
-
-
-      - name: Copy htmltest log from Docker container
-        run: |
-          CONTAINER_ID=$(docker ps -q --filter "ancestor=wjdp/htmltest-action:master")
-          if [ -n "$CONTAINER_ID" ]; then
-            docker cp "$CONTAINER_ID":/github/workspace/htmltest.log $GITHUB_WORKSPACE/htmltest.log
-          else
-            echo "No running htmltest container found."
-          fi
-
-      - name: Extract internal link errors
-        id: extract_errors
-        run: |
-          LOG_FILE="${{ github.workspace }}/htmltest.log"
-          if [[ ! -f "$LOG_FILE" ]]; then
-            echo "htmltest.log not found. Skipping extraction."
-            echo "internal_link_errors=" >> $GITHUB_OUTPUT
-            exit 0
-          fi
-
-          INTERNAL_ERRORS=$(grep -E 'target does not exist' "$LOG_FILE" | grep -v 'http' || true)
-
-          {
-            echo "internal_link_errors<<EOF"
-            echo "$INTERNAL_ERRORS"
-            echo "EOF"
-          } >> "$GITHUB_OUTPUT"
-
-      - name: Show Internal Link Errors
-        run: echo "${{ steps.extract_errors.outputs.internal_link_errors }}"
-
-      - name: Use link checker Output
-        run: |
-          echo "link checker result string: ${{ steps.linkchecker_step.outputs.resultString }}" >> $GITHUB_OUTPUT
-
-      - name: Annotate broken links
-        if: always()
-        run: |
-          INTERNAL_ERRORS="${{ steps.extract_errors.outputs.internal_link_errors }}"
-          if [[ -n "$INTERNAL_ERRORS" ]]; then
-            echo "$INTERNAL_ERRORS" | while IFS= read -r line; do
-              echo "::error file=index.html::Broken internal link: $line"
-            done
-          else
-            echo "::notice::No internal link errors found."
-          fi
+          echo "Broken links found:"
+          cat result.json | jq '.links[] | select(.status_code != 200) | .url' || echo "No broken links found."
+          broken_links=$(cat result.json | jq '[.links[] | select(.status_code != 200)] | length')
+          echo "broken_links=$broken_links" >> $GITHUB_ENV
 
 
 
