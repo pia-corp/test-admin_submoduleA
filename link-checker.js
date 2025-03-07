@@ -5,8 +5,8 @@ const cheerio = require('cheerio');
 
 const publicDir = path.join(__dirname, 'public');
 const htmlFiles = fs.readdirSync(publicDir).filter(file => file.endsWith('.html'));
-let dataArray = [];
-let outputPath;
+
+const brokenLinks = [];
 
 const siteChecker = new SiteChecker({
   excludeExternalLinks: true,
@@ -17,18 +17,15 @@ const siteChecker = new SiteChecker({
 }, {
   link: (result) => {
     if (result.broken) {
-      dataArray.push(result.url.original);
       console.log(result.url.original);
-      notifyGitHub(result.url.original);
+      brokenLinks.push(result.url.original);
     } else {
-      // console.log(`${result.url.original}: Valid`);
+      console.log(`${result.url.original}: Valid`);
     }
   },
-  end: () => {
+  end: async () => {
     console.log("Link checking completed.");
-    console.log(dataArray);
-    // JSON.stringify(dataArray);
-    return JSON.stringify(`errors=${dataArray}`);
+    await notifyGitHub(brokenLinks);
   }
 });
 
@@ -45,11 +42,11 @@ htmlFiles.forEach(file => {
   siteChecker.enqueue(`http://localhost:8081/${file}`);
 });
 
-async function notifyGitHub(brokenUrl) {
+async function notifyGitHub(brokenUrls) {
   const outputPath = process.env.GITHUB_OUTPUT;
   if (outputPath) {
-    // fs.appendFileSync(outputPath, `errors=${brokenUrl}\n`);
-    // fs.appendFileSync(outputPath, `broken_link=${brokenUrl}\n`);
+    const errors = brokenUrls.join('\n');
+    fs.appendFileSync(outputPath, `errors=${errors}\n`);
   }
-  // console.log(`GitHub Notice: Broken link detected - ${errors}`);
+  console.log(`GitHub Notice: Broken links detected - ${brokenUrls}`);
 }
