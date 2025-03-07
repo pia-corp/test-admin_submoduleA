@@ -42,7 +42,8 @@ htmlFiles.forEach(file => {
 async function notifyGitHub(brokenUrl) {
   const outputPath = process.env.GITHUB_OUTPUT;
   if (outputPath) {
-    fs.appendFileSync(outputPath, `errors=${errorMessages}\n`);
+    fs.appendFileSync(outputPath, `errors=${brokenUrl}\n`);
+    // fs.appendFileSync(outputPath, `broken_link=${brokenUrl}\n`);
   }
   console.log(`GitHub Notice: Broken link detected - ${errors}`);
 }
