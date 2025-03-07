@@ -23,20 +23,13 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Run link checker
-        id: linkchecker_step
-        run: |
-          # curl https://htmltest.wjdp.uk | sudo bash -s -- -b /usr/local/bin
-          # npx http-server -p 8080 &
-          # node link-checker.js
-
-          - name: Run htmltest
-          id: htmltest
-          uses: wjdp/htmltest-action@master
-          with:
-            path: public
-            config: .htmltest.yml
-          continue-on-error: true
+      - name: Run htmltest
+        id: htmltest
+        uses: wjdp/htmltest-action@master
+        with:
+          path: public
+          config: .htmltest.yml
+        continue-on-error: true
 
       - name: Extract internal link errors
         id: extract_errors
