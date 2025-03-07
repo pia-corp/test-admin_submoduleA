@@ -35,7 +35,6 @@ jobs:
 
       - name: Display broken links
         run: |
-        run: |
           {
             echo "| ファイル名 | リンク切れパス |"
             echo "| :--: | :--: |"
