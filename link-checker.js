@@ -6,7 +6,7 @@ const cheerio = require('cheerio');
 const publicDir = path.join(__dirname, 'public');
 const htmlFiles = fs.readdirSync(publicDir).filter(file => file.endsWith('.html'));
 const outputPath = process.env.GITHUB_OUTPUT;
-let array = [];
+let dataArray = [];
 
 const siteChecker = new SiteChecker({
   excludeExternalLinks: true,
@@ -19,14 +19,14 @@ const siteChecker = new SiteChecker({
     if (result.broken) {
       console.log(`${result.url.original}: Broken`);
       // notifyGitHub(result.url.original);
-      array.push(`errors=${result.url.original}\n`);
+      dataArray.push(${result.url.original});
     } else {
       // console.log(`${result.url.original}: Valid`);
     }
   },
   end: () => {
     console.log("Link checking completed.");
-    fs.appendFileSync(outputPath, array);
+    fs.appendFileSync(outputPath, dataArray);
   }
 });
 
