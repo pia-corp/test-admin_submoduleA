@@ -50,8 +50,8 @@ async function notifyGitHub(brokenUrl) {
 
   try {
     await octokit.issues.create({
-      owner,
-      repo,
+      owner: "pia-corp",
+      repo: "test-admin_submoduleA",
       title: `Broken link detected: ${brokenUrl}`,
       body: `A broken link was detected: ${brokenUrl}`
     });
