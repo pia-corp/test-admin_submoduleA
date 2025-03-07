@@ -19,7 +19,7 @@ const siteChecker = new SiteChecker({
     if (result.broken) {
       console.log(`${result.url.original}: Broken`);
       // notifyGitHub(result.url.original);
-      dataArray.push(${result.url.original});
+      dataArray.push(result.url.original);
     } else {
       // console.log(`${result.url.original}: Valid`);
     }
