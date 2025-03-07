@@ -1,3 +1,7 @@
 IgnoreAltMissing: true
 IgnoreAltEmpty: true
 IgnoreExternalBrokenLinks: true
+OutputDir: tmp/.htmltest
+OutputCacheFile: refcache.json
+OutputLogFile: htmltest.log
+CacheExpires: 336h
