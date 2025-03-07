@@ -24,10 +24,20 @@ jobs:
         run: npm install
 
       - name: Run htmltest
-        id: htmltest
-        run: |
-          htmltest public -c .htmltest.yml | tee $GITHUB_WORKSPACE/htmltest.log
+        uses: wjdp/htmltest-action@master
+        with:
+          path: public
+          config: .htmltest.yml
         continue-on-error: true
+
+      - name: Copy htmltest log from Docker container
+        run: |
+          CONTAINER_ID=$(docker ps -q --filter "ancestor=wjdp/htmltest-action:master")
+          if [ -n "$CONTAINER_ID" ]; then
+            docker cp "$CONTAINER_ID":/github/workspace/htmltest.log $GITHUB_WORKSPACE/htmltest.log
+          else
+            echo "No running htmltest container found."
+          fi
 
       - name: Extract internal link errors
         id: extract_errors
