@@ -2,6 +2,7 @@ const { SiteChecker } = require("broken-link-checker");
 const fs = require('fs');
 const path = require('path');
 const cheerio = require('cheerio');
+const { Octokit } = require("@octokit/rest");
 
 const publicDir = path.join(__dirname, 'public');
 const htmlFiles = fs.readdirSync(publicDir).filter(file => file.endsWith('.html'));
@@ -13,10 +14,10 @@ const siteChecker = new SiteChecker({
   acceptedSchemes: ["http", "https"],
   requestMethod: "get"
 }, {
-  link: (result) => {
+  link: async (result) => {
     if (result.broken) {
       console.log(`${result.url.original}: Broken`);
-      // notifyGitHub(result.url.original);
+      await notifyGitHub(result.url.original);
     } else {
       // console.log(`${result.url.original}: Valid`);
     }

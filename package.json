@@ -9,8 +9,5 @@
     "http-server": "^14.1.1",
     "jq": "^1.7.2",
     "lighthouse": "^12.4.0"
-  },
-  "scripts": {
-    "start": "http-server ./public"
   }
 }
