@@ -18,14 +18,16 @@ const siteChecker = new SiteChecker({
 }, {
   link: (result) => {
     if (result.broken) {
-      console.log(result.url.original);
       const file = result.base.original.split('/').pop();
-      if (!brokenLinks[file]) {
-        brokenLinks[file] = [];
+      if (file != "") {
+        if (!brokenLinks[file]) {
+          brokenLinks[file] = [];
+        }
+        brokenLinks[file].push(result.url.original);
       }
-      brokenLinks[file].push(result.url.original);
+
     } else {
-      console.log(`${result.url.original}: Valid`);
+      // console.log(`${result.url.original}: Valid`);
     }
   },
   end: async () => {
@@ -47,7 +49,6 @@ htmlFiles.forEach(file => {
 
   fs.writeFileSync(filePath, $.html());
   siteChecker.enqueue(`http://localhost:8081/${file}`);
-  checkedFiles.push(file);
 });
 
 async function notifyGitHub(brokenLinks) {
