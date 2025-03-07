@@ -13,34 +13,29 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # リポジトリをチェックアウト
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # Node.jsをセットアップ
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 'latest'  # 任意のNode.jsバージョンを指定
+          node-version: 'latest'
 
-      # npm依存関係をインストール
       - name: Install dependencies
         run: npm install
 
-      # broken-link-checkerを使ってリンクをチェック
-      - name: Run broken link checker
-        run: |
-          # http-server dist/
-          # broken-link-checker http://localhost:8080/dist/ -ro
-          npx broken-link-checker --input=./public/ --output=json > result.json || true
+      - name: Start server
+        run: npm start &
+        env:
+          CI: true
 
-      # 結果を表示してGITHUB_OUTPUTにエラーを出力
-      - name: Show broken links and set output
-        run: |
-          echo "Broken links found:"
-          cat result.json | jq '.links[] | select(.status_code != 200) | .url' || echo "No broken links found."
-          broken_links=$(cat result.json | jq '[.links[] | select(.status_code != 200)] | length')
-          echo "broken_links=$broken_links" >> $GITHUB_ENV
+      - name: Run link checker
+        run: node link-checker.js
+        env:
+          GITHUB_OUTPUT: ${{ github.output }}
+
+      - name: Display broken links
+        run: echo "${{ steps.link-checker.outputs.errors }}"
 
 
 

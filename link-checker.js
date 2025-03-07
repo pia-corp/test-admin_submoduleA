@@ -1,47 +1,19 @@
-const { SiteChecker } = require("broken-link-checker");
+const { exec } = require('child_process');
 const fs = require('fs');
-const path = require('path');
-const cheerio = require('cheerio');
 
-const publicDir = path.join(__dirname, 'public');
-const htmlFiles = fs.readdirSync(publicDir).filter(file => file.endsWith('.html'));
+exec('npx broken-link-checker http://localhost:3000 --json', (error, stdout, stderr) => {
+  if (error) {
+    console.error(`exec error: ${error}`);
+    return;
+  }
 
-const siteChecker = new SiteChecker({}, {
-  link: (result) => {
-    if (result.broken) {
-      console.log(`${result.url.original}: Broken`);
-      notifyGitHub(result.url.original);
-    } else {
-      console.log(`${result.url.original}: Valid`);
-    }
-  },
-  end: () => {
-    console.log("Link checking completed.");
+  const result = JSON.parse(stdout);
+  const errors = result.filter(link => link.broken);
+
+  if (errors.length > 0) {
+    const errorMessages = errors.map(error => `Broken link: ${error.url} - ${error.reason}`).join('\n');
+    fs.writeFileSync(process.env.GITHUB_OUTPUT, `errors=${errorMessages}`);
+  } else {
+    fs.writeFileSync(process.env.GITHUB_OUTPUT, 'errors=No broken links found');
   }
 });
-
-htmlFiles.forEach(file => {
-  const filePath = path.join(publicDir, file);
-  const content = fs.readFileSync(filePath, 'utf8');
-  const $ = cheerio.load(content);
-
-  $('a[target="_blank"]').each((index, element) => {
-    $(element).attr('href', '#');
-  });
-
-  fs.writeFileSync(filePath, $.html());
-  siteChecker.enqueue(`http://localhost:8081/${file}`);
-});
-
-function notifyGitHub(brokenUrl) {
-  const outputPath = process.env.GITHUB_OUTPUT || '/tmp/github_output';
-  const resultString = "${brokenUrl}";
-  // fs.appendFileSync(outputPath, output);
-  // console.log(`GitHub Notice: Broken link detected - ${brokenUrl}`);
-
-
-  // const resultString = "this is lighthouse result string";
-  // 結果をGITHUB_OUTPUTに出力する。
-  fs.writeFileSync(outputPath, `resultString=${resultString}`);
-  console.log('String generated and output to GITHUB_OUTPUT.');
-}
