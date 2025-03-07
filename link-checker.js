@@ -5,7 +5,7 @@ const cheerio = require('cheerio');
 
 const publicDir = path.join(__dirname, 'public');
 const htmlFiles = fs.readdirSync(publicDir).filter(file => file.endsWith('.html'));
-const outputPath = process.env.GITHUB_OUTPUT;
+let outputPath = process.env.GITHUB_OUTPUT;
 // let dataArray = [];
 
 const siteChecker = new SiteChecker({
