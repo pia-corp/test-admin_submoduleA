@@ -26,8 +26,12 @@ const siteChecker = new SiteChecker({
 }, {
   link: (result) => {
     if (result.broken) {
-      const file = result.base.original.split('/').pop();
-      if (file != "") {
+      // 正規表現を使用してプロトコル + ドメイン部分を削除
+      const file = result.base.original.replace(/^https?:\/\/[^/]+/, '');
+
+      // const file = result.base.original.split('/').pop();
+
+      if (file != "/") {
         if (!brokenLinks[file]) {
           brokenLinks[file] = [];
         }
