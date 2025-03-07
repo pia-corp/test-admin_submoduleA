@@ -35,6 +35,6 @@ jobs:
 
       - name: Display broken links
         run: |
-          echo "| ファイル名 | リンク切れパス |"
-          echo "| :--: | :--: |"
-          echo '${{ steps.link-checker.outputs.errors }}' | jq -r 'to_entries[] | .key as $key | .value[] | "| \($key) | \(.) |"'
+          echo "| ファイル名 | リンク切れパス |" >> $GITHUB_ENV
+          echo "| :--: | :--: |" >> $GITHUB_ENV
+          echo '${{ steps.link-checker.outputs.errors }}' | jq -r 'to_entries[] | .key as $key | .value[] | "| \($key) | \(.) |"' >> $GITHUB_ENV
