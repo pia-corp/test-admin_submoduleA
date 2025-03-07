@@ -1,7 +1,7 @@
 const { exec } = require('child_process');
 const fs = require('fs');
 
-exec('npx broken-link-checker http://localhost:3000 --json', (error, stdout, stderr) => {
+exec('npx broken-link-checker http://localhost:8080 --json', (error, stdout, stderr) => {
   if (error) {
     console.error(`exec error: ${error}`);
     return;
