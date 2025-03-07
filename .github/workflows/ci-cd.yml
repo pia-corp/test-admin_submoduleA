@@ -35,7 +35,9 @@ jobs:
           GITHUB_OUTPUT: ${{ github.output }}
 
       - name: Display broken links
-        run: echo "${{ steps.link-checker.outputs.errors }}"
+        run: |
+          echo "${{ steps.link-checker.outputs.errors }}"
+          echo "Errors found: ${{ steps.check_links.outputs.errors }}"
 
 
 
