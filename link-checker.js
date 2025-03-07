@@ -2,7 +2,6 @@ const { SiteChecker } = require("broken-link-checker");
 const fs = require('fs');
 const path = require('path');
 const cheerio = require('cheerio');
-const { Octokit } = require("@octokit/rest");
 
 const publicDir = path.join(__dirname, 'public');
 const htmlFiles = fs.readdirSync(publicDir).filter(file => file.endsWith('.html'));
@@ -14,10 +13,10 @@ const siteChecker = new SiteChecker({
   acceptedSchemes: ["http", "https"],
   requestMethod: "get"
 }, {
-  link: async (result) => {
+  link: (result) => {
     if (result.broken) {
       console.log(`${result.url.original}: Broken`);
-      await notifyGitHub(result.url.original);
+      notifyGitHub(result.url.original);
     } else {
       // console.log(`${result.url.original}: Valid`);
     }
@@ -41,24 +40,9 @@ htmlFiles.forEach(file => {
 });
 
 async function notifyGitHub(brokenUrl) {
-  const octokit = new Octokit({
-    auth: process.env.GITHUB_TOKEN
-  });
-
-  console.log(`GITHUB_REPOSITORY: ${process.env.GITHUB_REPOSITORY}`);
-  const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
-
-  try {
-    await octokit.issues.create({
-      owner: "pia-corp",
-      repo: "test-admin_submoduleA",
-      title: `Broken link detected: ${brokenUrl}`,
-      body: `A broken link was detected: ${brokenUrl}`
-    });
-
-    console.log(`GitHub Notice: Broken link detected - ${brokenUrl}`);
-  } catch (error) {
-    console.error(`Failed to create GitHub issue: ${error.message}`);
-    console.error(error);
+  const outputPath = process.env.GITHUB_OUTPUT;
+  if (outputPath) {
+    fs.appendFileSync(outputPath, `broken_link=${brokenUrl}\n`);
   }
+  console.log(`GitHub Notice: Broken link detected - ${brokenUrl}`);
 }
