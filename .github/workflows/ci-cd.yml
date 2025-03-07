@@ -30,7 +30,7 @@ jobs:
           sleep 5
 
       - name: Run link checker
-        id: link-checker
+        id: link_checker
         run: node link-checker.js
 
       - name: Show broken links as JSON
