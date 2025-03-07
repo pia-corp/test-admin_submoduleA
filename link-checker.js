@@ -46,8 +46,10 @@ async function notifyGitHub(brokenUrls) {
   const outputPath = process.env.GITHUB_OUTPUT;
   if (outputPath) {
     const errors = brokenUrls.map(url => `errors=${url}`).join('\n');
-    console.log(`GitHub Notice: Broken links detected - ${errors}`);
-    fs.appendFileSync(outputPath, `errors=${errors}\n`);
+    // console.log(`GitHub Notice: Broken links detected - ${errors}`);
+    // fs.appendFileSync(outputPath, `errors=${errors}\n`);
   }
+  fs.appendFileSync(outputPath, `errors=${brokenUrls}\n`);
+
   console.log(`GitHub Notice: Broken links detected - ${brokenUrls}`);
 }
