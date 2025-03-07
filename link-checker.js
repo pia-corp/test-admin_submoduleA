@@ -28,7 +28,7 @@ const siteChecker = new SiteChecker({
     console.log("Link checking completed.");
     console.log(dataArray);
     // JSON.stringify(dataArray);
-    return JSON.stringify(dataArray);
+    return JSON.stringify(`errors=${dataArray}`);
   }
 });
 
