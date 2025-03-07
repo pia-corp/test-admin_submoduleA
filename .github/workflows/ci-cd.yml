@@ -37,4 +37,4 @@ jobs:
         run: |
           echo "| ファイル名 | リンク切れパス |"
           echo "| :--: | :--: |"
-          echo "${{ steps.link-checker.outputs.errors }}" | jq -r 'to_entries[] | "| \(.key) | \(.value | join(", ")) |"'
+          echo "${{ steps.link-checker.outputs.errors }}" | jq -r 'to_entries[] | .key as $key | .value[] | "| \($key) | \(.) |"'
