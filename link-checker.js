@@ -26,7 +26,8 @@ const siteChecker = new SiteChecker({
   },
   end: () => {
     console.log("Link checking completed.");
-    fs.appendFileSync(outputPath, dataArray);
+    const resultsString = JSON.stringify(dataArray);
+    fs.appendFileSync(outputPath, resultsString);
   }
 });
 
