@@ -31,15 +31,8 @@ jobs:
 
       - name: Run link checker
         id: link-checker
-        run: |
-          response=$(node link-checker.js)
-          echo "$response" > data.json
+        run: node link-checker.js
 
       - name: Display broken links
         run: |
-          for item in $(jq -r '.errors[]' data.json); do
-            echo "Fruit: $item"
-          done
-
-
-          # echo "Errors found: ${{ steps.link-checker.outputs.errors }}"
+          echo "Errors found: ${{ steps.link-checker.outputs.errors }}"
