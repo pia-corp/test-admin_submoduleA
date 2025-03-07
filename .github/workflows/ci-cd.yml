@@ -33,6 +33,7 @@ jobs:
         id: link-checker
         run: node link-checker.js
 
-      - name: Display broken links
+      - name: Show broken links as JSON
         run: |
-          echo "Errors found: ${{ steps.link-checker.outputs.errors }}"
+          echo "Broken links JSON: ${{ steps.link_checker.outputs.errors }}"
+          echo "${{ fromJson(steps.link_checker.outputs.errors) }}"

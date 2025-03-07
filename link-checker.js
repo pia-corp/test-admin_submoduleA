@@ -23,10 +23,7 @@ const siteChecker = new SiteChecker({
   },
   end: () => {
     console.log("Link checking completed.");
-    notifyGitHub(brokenLinks);
-  }
 
-  if (outputPath) {
     // JSON.stringify で文字列化し、エスケープ処理を行う
     fs.appendFileSync(outputPath, `errors=${JSON.stringify(brokenLinks).replace(/"/g, '\\"')}\n`);
   }
