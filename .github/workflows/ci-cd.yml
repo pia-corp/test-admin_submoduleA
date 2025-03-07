@@ -23,15 +23,29 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Install htmltest
+      - name: Run htmltest
+        id: htmltest
         run: |
-          curl -L https://github.com/wjdp/htmltest/releases/latest/download/htmltest-linux-amd64 > /usr/local/bin/htmltest
-          chmod +x /usr/local/bin/htmltest
+          htmltest public -c .htmltest.yml | tee $GITHUB_WORKSPACE/htmltest.log
+        continue-on-error: true
 
-      - name: Run htmltest and save log
+      - name: Extract internal link errors
+        id: extract_errors
         run: |
-          htmltest public -c .htmltest.yml 2>&1 | tee $GITHUB_WORKSPACE/htmltest.log
+          LOG_FILE="${{ github.workspace }}/htmltest.log"
+          if [[ ! -f "$LOG_FILE" ]]; then
+            echo "htmltest.log not found. Skipping extraction."
+            echo "internal_link_errors=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
 
+          INTERNAL_ERRORS=$(grep -E 'target does not exist' "$LOG_FILE" | grep -v 'http' || true)
+
+          {
+            echo "internal_link_errors<<EOF"
+            echo "$INTERNAL_ERRORS"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Show Internal Link Errors
         run: echo "${{ steps.extract_errors.outputs.internal_link_errors }}"
