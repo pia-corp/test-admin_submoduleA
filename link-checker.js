@@ -48,12 +48,17 @@ async function notifyGitHub(brokenUrl) {
   console.log(`GITHUB_REPOSITORY: ${process.env.GITHUB_REPOSITORY}`);
   const [owner, repo] = process.env.GITHUB_REPOSITORY.split("/");
 
-  await octokit.issues.create({
-    owner,
-    repo,
-    title: `Broken link detected: ${brokenUrl}`,
-    body: `A broken link was detected: ${brokenUrl}`
-  });
+  try {
+    await octokit.issues.create({
+      owner,
+      repo,
+      title: `Broken link detected: ${brokenUrl}`,
+      body: `A broken link was detected: ${brokenUrl}`
+    });
 
-  console.log(`GitHub Notice: Broken link detected - ${brokenUrl}`);
+    console.log(`GitHub Notice: Broken link detected - ${brokenUrl}`);
+  } catch (error) {
+    console.error(`Failed to create GitHub issue: ${error.message}`);
+    console.error(error);
+  }
 }
