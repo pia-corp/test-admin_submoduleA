@@ -25,25 +25,9 @@ const siteChecker = new SiteChecker({
     console.log("Link checking completed.");
     notifyGitHub(brokenLinks);
   }
-});
 
-htmlFiles.forEach(file => {
-  const filePath = path.join(publicDir, file);
-  const content = fs.readFileSync(filePath, 'utf8');
-  const $ = cheerio.load(content);
-
-  $('a[target="_blank"]').each((index, element) => {
-    $(element).attr('href', '#');
-  });
-
-  fs.writeFileSync(filePath, $.html());
-  siteChecker.enqueue(`http://localhost:8081/${file}`);
-});
-
-async function notifyGitHub(brokenLinks) {
-  const outputPath = process.env.GITHUB_OUTPUT;
   if (outputPath) {
-    fs.appendFileSync(outputPath, `broken_links=${brokenLinks.join(',')}\n`);
+    // JSON.stringify で文字列化し、エスケープ処理を行う
+    fs.appendFileSync(outputPath, `errors=${JSON.stringify(brokenLinks).replace(/"/g, '\\"')}\n`);
   }
-  console.log(`GitHub Notice: Broken links detected - ${brokenLinks.join(', ')}`);
-}
+});
