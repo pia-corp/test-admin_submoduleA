@@ -37,6 +37,6 @@ jobs:
         run: |
           {
             echo "| ファイル名 | リンク切れパス |"
-            echo "| :--: | :--: |"
+            echo "| :-- | :-- |"
             echo '${{ steps.link-checker.outputs.errors }}' | jq -r 'to_entries[] | .key as $key | .value[] | "| \($key) | \(.) |"'
           } >> $GITHUB_STEP_SUMMARY
