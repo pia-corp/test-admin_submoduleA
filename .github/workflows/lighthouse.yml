@@ -24,5 +24,6 @@ jobs:
           temporaryPublicStorage: true
         continue-on-error: true
 
+      - name: report
         run: |
           echo "${{ steps.lighthouse_audit.outputs.links }};"
