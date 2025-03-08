@@ -11,10 +11,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4.2.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v4.2.0
         with:
           node-version: 'latest'
 
@@ -32,9 +32,13 @@ jobs:
       - name: Run Lighthouse
         run: |
           mkdir -p lighthouse-results
-          URLS=("http://localhost:8080/index.html" "http://localhost:8080/about.html") # 必要に応じてURLを追加
-          for url in "${URLS[@]}"; do
-            BASENAME=$(basename "$url" .html) # URLからページ名（例: index, about）を取得
+
+          # publicディレクトリ内のHTMLファイルを自動でリストアップ
+          URLS=$(find public -name "*.html" | sed 's|public/||' | sed 's|^|http://localhost:8080/|')
+
+          # 各HTMLページに対してLighthouseを実行
+          for url in $URLS; do
+            BASENAME=$(basename "$url" .html)  # URLからページ名（例: index, about）を取得
             lighthouse "$url" --quiet --chrome-flags="--headless --disable-device-emulation --no-sandbox" --output=json --output-path="lighthouse-results/$BASENAME.json" --throttling-method=provided --disable-network-throttling
           done
 
