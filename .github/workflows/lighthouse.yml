@@ -39,9 +39,12 @@ jobs:
           # 各HTMLページに対してLighthouseを実行
           for url in $URLS; do
             FILE_PATH=${url#http://localhost:8080/}  # URLからファイルパスを取得
-            DIR_NAME=$(dirname "$FILE_PATH")  # ディレクトリ部分を取得
-            BASE_NAME=$(basename "$FILE_PATH")  # ファイル名部分を取得
-            OUTPUT_NAME=${DIR_NAME//\//_}_${BASE_NAME}  # ディレクトリ区切りを_に変換
+            # DIR_NAME=$(dirname "$FILE_PATH")  # ディレクトリ部分を取得
+            # BASE_NAME=$(basename "$FILE_PATH")  # ファイル名部分を取得
+            # OUTPUT_NAME=${DIR_NAME//\//_}_${BASE_NAME}  # ディレクトリ区切りを_に変換
+            # シェルパラメータ展開で URL を分解
+            FULLPATH=${FILE_PATH#*://}
+            OUTPUT_NAME=${FULLPATH#*/}
 
             lighthouse "$url" --quiet --chrome-flags="--headless --disable-device-emulation --no-sandbox" --output=json --output-path="lighthouse-results/$OUTPUT_NAME.json" --throttling-method=provided --disable-network-throttling
           done
