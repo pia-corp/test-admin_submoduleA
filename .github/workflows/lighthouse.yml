@@ -30,38 +30,34 @@ jobs:
             sleep 2
           done
 
-      - name: Run Lighthouse for desktop
+      - name: Run Lighthouse for desktop in parallel
         run: |
           echo "| File name | Device | Performance | Accessibility | Best practices | SEO |" > report.md
           echo "|-----------|--------|-------------|--------------|---------------|-----|" >> report.md
-          for file in $(find public -name "*.html"); do
-            url="http://localhost:8080/${file#public/}"
-            results=$(lighthouse $url --quiet --output=json --chrome-flags="--headless" --preset=desktop \
-              --disable-storage-reset --wait-for-load)
-            performance=$(echo "$results" | jq -r '.categories.performance.score // 0 * 100')
-            accessibility=$(echo "$results" | jq -r '.categories.accessibility.score // 0 * 100')
-            best_practices=$(echo "$results" | jq -r '.categories."best-practices".score // 0 * 100')
-            seo=$(echo "$results" | jq -r '.categories.seo.score // 0 * 100')
-            echo "| $file | Desktop | $performance | $accessibility | $best_practices | $seo |" >> report.md
-          done
 
-      - name: Run Lighthouse for mobile
-        run: |
-          for file in $(find public -name "*.html"); do
+          find public -name "*.html" | parallel -j 4 '
+            file={}
             url="http://localhost:8080/${file#public/}"
-            results=$(lighthouse $url --quiet --output=json --chrome-flags="--headless" \
-              --throttling-method=simulate \
-              --throttling.cpuSlowdownMultiplier=4 \
-              --throttling.downloadThroughputKbps=1600 \
-              --throttling.uploadThroughputKbps=768 \
-              --throttling.latencyMs=150 \
-              --disable-storage-reset --wait-for-load)
-            performance=$(echo "$results" | jq -r '.categories.performance.score // 0 * 100')
-            accessibility=$(echo "$results" | jq -r '.categories.accessibility.score // 0 * 100')
-            best_practices=$(echo "$results" | jq -r '.categories."best-practices".score // 0 * 100')
-            seo=$(echo "$results" | jq -r '.categories.seo.score // 0 * 100')
+            results=$(lighthouse $url --quiet --output=json --chrome-flags="--headless" --preset=desktop)
+            performance=$(echo "$results" | jq -r ".categories.performance.score // 0 * 100")
+            accessibility=$(echo "$results" | jq -r ".categories.accessibility.score // 0 * 100")
+            best_practices=$(echo "$results" | jq -r ".categories.\"best-practices\".score // 0 * 100")
+            seo=$(echo "$results" | jq -r ".categories.seo.score // 0 * 100")
+            echo "| $file | Desktop | $performance | $accessibility | $best_practices | $seo |" >> report.md
+          '
+
+      - name: Run Lighthouse for mobile in parallel
+        run: |
+          find public -name "*.html" | parallel -j 4 '
+            file={}
+            url="http://localhost:8080/${file#public/}"
+            results=$(lighthouse $url --quiet --output=json --chrome-flags="--headless" --preset=desktop)
+            performance=$(echo "$results" | jq -r ".categories.performance.score // 0 * 100")
+            accessibility=$(echo "$results" | jq -r ".categories.accessibility.score // 0 * 100")
+            best_practices=$(echo "$results" | jq -r ".categories.\"best-practices\".score // 0 * 100")
+            seo=$(echo "$results" | jq -r ".categories.seo.score // 0 * 100")
             echo "| $file | Mobile | $performance | $accessibility | $best_practices | $seo |" >> report.md
-          done
+          '
 
       - name: Add PR comment
         uses: mshick/add-pr-comment@v2
