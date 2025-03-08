@@ -65,23 +65,31 @@ jobs:
           done
 
       - name: Create GitHub release if not exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Check if the release already exists, create if not
-          gh release view v1.0.0 || gh release create v1.0.0 --title "Lighthouse Audit Reports" --notes "Automated Lighthouse Reports"
+          export GH_TOKEN=${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG="lighthouse-report-${{ github.run_id }}"
+          if ! gh release view "$RELEASE_TAG" &> /dev/null; then
+            gh release create "$RELEASE_TAG" --title "Lighthouse Audit Reports ($RELEASE_TAG)" --notes "Automated Lighthouse Reports"
+          fi
 
       - name: Upload reports to GitHub Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # レポートをGitHubのリリースにアップロード
+          export GH_TOKEN=${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG="lighthouse-report-${{ github.run_id }}"
           for file in lighthouse-results/*.json; do
-            gh release upload v1.0.0 "$(basename $file)" "$file" --clobber
+            gh release upload "$RELEASE_TAG" "$(basename $file)" "$file" --clobber
           done
 
       - name: Post Lighthouse report to PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh pr comment ${{ github.event.pull_request.number }} --body "$(cat summary.md)"
+        run: |
+          export GH_TOKEN=${{ secrets.GITHUB_TOKEN }}
+          gh pr comment ${{ github.event.pull_request.number }} --body "$(cat summary.md)"
 
       - name: Stop local server
         if: always()
