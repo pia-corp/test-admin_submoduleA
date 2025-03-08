@@ -36,8 +36,8 @@ jobs:
           echo "Running Lighthouse audits..."
 
           # Create markdown file for results
-          echo "| File name | Performance | Accessibility | Best practices | SEO |" > lighthouse-results.md
-          echo "| --------- | ----------- | ------------- | -------------- | --- |" >> lighthouse-results.md
+          echo "| File name | Performance | Accessibility | Best practices | SEO | URL |" > lighthouse-results.md
+          echo "| --------- | ----------- | ------------- | -------------- | --- | --- |" >> lighthouse-results.md
 
           # Find all HTML files
           HTML_FILES=$(find public -name "*.html")
@@ -63,6 +63,7 @@ jobs:
             # Find the latest report
             REPORT_PATH=$(find ./.lighthouseci -name "*.json" | sort | tail -n 1)
             echo "Report path: $REPORT_PATH"
+            echo "Report: $REPORT_PATH"
 
             if [ -f "$REPORT_PATH" ]; then
               # Extract scores using a more reliable method
@@ -79,7 +80,7 @@ jobs:
               echo "  SEO: $SEO"
 
               # Add to results table
-              echo "| $RELATIVE_PATH | $PERFORMANCE | $ACCESSIBILITY | $BEST_PRACTICES | $SEO |" >> lighthouse-results.md
+              echo "| $RELATIVE_PATH | $PERFORMANCE | $ACCESSIBILITY | $BEST_PRACTICES | $SEO | $FILE_URL |" >> lighthouse-results.md
             else
               echo "Error: No report found for $RELATIVE_PATH"
               echo "| $RELATIVE_PATH | Error | Error | Error | Error |" >> lighthouse-results.md
