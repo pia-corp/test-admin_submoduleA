@@ -31,10 +31,14 @@ jobs:
           const manifest = ${{ steps.lighthouse_audit.outputs.manifest }};
 
       - name: Post Lighthouse report to PR
-        run: |
-          echo "File name | Device | Performance | Accessibility | Best practices | SEO | report url" > report.md
-          echo "--- | --- | --- | --- | --- | --- | ---" >> report.md
-          for (let i = 0; i < urls.length; i++) {
-            echo "${manifest[i].fileName} | mobile | ${assertions[i].performance} | ${assertions[i].accessibility} | ${assertions[i].best-practices} | ${assertions[i].seo} | ${urls[i]}" >> report.md
-          }
-          gh pr comment ${{ github.event.pull_request.number }} --body "$(cat report.md)"
+        id: format_lighthouse_score
+        uses: actions/github-script@v7.0.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            echo "File name | Device | Performance | Accessibility | Best practices | SEO | report url" > report.md
+            echo "--- | --- | --- | --- | --- | --- | ---" >> report.md
+            for (let i = 0; i < urls.length; i++) {
+              echo "${manifest[i].fileName} | mobile | ${assertions[i].performance} | ${assertions[i].accessibility} | ${assertions[i].best-practices} | ${assertions[i].seo} | ${urls[i]}" >> report.md
+            }
+            gh pr comment ${{ github.event.pull_request.number }} --body "$(cat report.md)"
