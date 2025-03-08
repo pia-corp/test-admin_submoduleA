@@ -1,0 +1,47 @@
+name: Lighthouse CI
+
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, edited, reopened, synchronize]
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install Lighthouse
+        run: npm install -g lighthouse
+
+      - name: Start static server
+        run: npx http-server public -p 8080 &
+
+      - name: Run Lighthouse for desktop
+        run: |
+          echo "# Lighthouse Report" > report.md
+          for file in $(find public -name "*.html"); do
+            url="http://localhost:8080/${file#public/}"
+            score=$(lighthouse $url --quiet --output=json --chrome-flags="--headless" --preset=desktop | jq -r '.categories.performance.score * 100')
+            echo "| $file | Desktop | $score |" >> report.md
+          done
+
+      - name: Run Lighthouse for mobile
+        run: |
+          for file in $(find public -name "*.html"); do
+            url="http://localhost:8080/${file#public/}"
+            score=$(lighthouse $url --quiet --output=json --chrome-flags="--headless" --preset=mobile | jq -r '.categories.performance.score * 100')
+            echo "| $file | Mobile | $score |" >> report.md
+          done
+
+      - name: Add PR comment
+        uses: mshick/add-pr-comment@v2
+        with:
+          message-path: report.md

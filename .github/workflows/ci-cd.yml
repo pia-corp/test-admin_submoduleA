@@ -1,66 +1,57 @@
-name: CI/CD Pipeline
+# name: CI/CD Pipeline
 
-on:
-  pull_request:
-    branches:
-      - main
-    types: [opened, edited, reopened, synchronize]
+# on:
+#   pull_request:
+#     branches:
+#       - main
+#     types: [opened, edited, reopened, synchronize]
 
-jobs:
-  check_links:
-    runs-on: ubuntu-latest
+# jobs:
+#   check_links:
+#     runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v4
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 'latest'
+#       - name: Set up Node.js
+#         uses: actions/setup-node@v4
+#         with:
+#           node-version: 'latest'
 
-      - name: Install dependencies
-        run: npm install
+#       - name: Install dependencies
+#         run: npm install
 
-      - name: Start local server
-        run: |
-          npx http-server ./public -p 8081 &
-          sleep 5
+#       - name: Start local server
+#         run: |
+#           npx http-server ./public -p 8081 &
+#           sleep 5
 
-      - name: Run link checker
-        id: link-checker
-        run: node link-checker.js
+#       - name: Run link checker
+#         id: link-checker
+#         run: node link-checker.js
 
-      # - name: Display broken links
-      #   run: |
-      #     {
-      #       echo "| ファイル名 | リンク切れパス |"
-      #       echo "| :-- | :-- |"
-      #       echo '${{ steps.link-checker.outputs.errors }}' | jq -r 'to_entries[] | .key as $key | .value[] | "| \($key) | \(.) |"'
-      #     } >> $GITHUB_STEP_SUMMARY
+#       - name: Post broken links to PR
+#         uses: actions/github-script@v6
+#         with:
+#           script: |
+#             const errorsArray = ${{ steps.link-checker.outputs.errors }}
 
-      - name: Post broken links to PR
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const errorsArray = ${{ steps.link-checker.outputs.errors }}
+#             let message = "";
+#             for (let key in errorsArray) {
+#               for (let i = 0, len = errorsArray[key].length; i < len; i++) {
+#                 message += `| ${key} | ${errorsArray[key][i]} |\n`;
+#               }
+#             }
 
-            let message = "";
-            for (let key in errorsArray) {
-              message += `| ${key} | ${errorsArray[key]} |\n`;
-              for (let i = 0, len = errorsArray[key].length; i < len; i++) {
-                message += `| ${key} | ${errorsArray[key][i]} |\n`;
-              }
-            }
-
-            const comment = `
-              ## Broken Links Report
-              | ファイル名 | リンク切れパス |
-              | :-- | :-- |
-              ${message}
-            `;
-            github.rest.issues.createComment({
-              ...context.repo,
-              issue_number: context.issue.number,
-              body: comment
-            });
+#             const comment = `
+#               ## Broken Links Report
+#               | ファイル名 | リンク切れパス |
+#               | :-- | :-- |
+#               ${message}
+#             `;
+#             github.rest.issues.createComment({
+#               ...context.repo,
+#               issue_number: context.issue.number,
+#               body: comment
+#             });
