@@ -31,6 +31,9 @@ jobs:
           budgetPath: ./.github/config/.budget.json
           temporaryPublicStorage: true
 
+      - name: Create results directory
+        run: mkdir -p lighthouse-results
+
       - name: Post Lighthouse report to PR
         run: |
           REPORTS_DIR="lighthouse-results"
