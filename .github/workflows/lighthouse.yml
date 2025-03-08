@@ -9,8 +9,17 @@ on:
 jobs:
   lighthouseci:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+
     steps:
-      - uses: actions/checkout@v4.2.2
+      - name: Check out repository
+        uses: actions/checkout@v4.2.2
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
 
       - name: Run Lighthouse against a static dist dir
         id: lighthouse_audit
@@ -30,12 +39,118 @@ jobs:
             const urls = ${{ steps.lighthouse_audit.outputs.links }};
             const assertions =${{ steps.lighthouse_audit.outputs.assertionResults }};
             const manifest = ${{ steps.lighthouse_audit.outputs.manifest }};
-            console.log("URLs:", urls);
-            console.log("Assertions:", assertions);
-            console.log("Manifest:", manifest);
-            # echo "File name | Device | Performance | Accessibility | Best practices | SEO | report url" > report.md
-            # echo "--- | --- | --- | --- | --- | --- | ---" >> report.md
-            # for (let i = 0; i < urls.length; i++) {
-            #   echo "${manifest[i].fileName} | mobile | ${assertions[i].performance} | ${assertions[i].accessibility} | ${assertions[i].best-practices} | ${assertions[i].seo} | ${urls[i]}" >> report.md
-            # }
-            # gh pr comment ${{ github.event.pull_request.number }} --body "$(cat report.md)"
+            const formatResult = (res) => Math.round(res * 100);
+            const fileName = (url) => url.replace(/^http:\/\/localhost:\d+\//, "");
+            const score = (res) => res >= 90 ? '🟢' : res >= 50 ? '🟠' : '🔴';
+            let existsError = 0;
+            let viewAssertion = "";
+            let scoreArray = {};
+
+            const getAssertionScore = (value) => {
+              let returnArray = {};
+              if (value.auditId === "interactive") {
+                if (!value.passed) {
+                  const tti = Math.round(value.actual) / 1000;
+                  returnArray.tti_score = `❌${tti}s`;
+                }
+              }
+              if (value.auditId === "first-meaningful-paint") {
+                if (!value.passed) {
+                  const fmp = Math.round(value.actual) / 1000;
+                  returnArray.fmp_score = `❌${fmp}s`;
+                }
+              }
+              if (value.auditId === "resource-summary") {
+                if (!value.passed) {
+                  if (value.auditProperty === "image.size") {
+                    const img = Math.round(value.actual / 1024);
+                    returnArray.img_score = `❌${img}KB`;
+                  }
+                }
+                if (!value.passed) {
+                  if (value.auditProperty === "script.size") {
+                    const js = Math.round(value.actual / 1024);
+                    returnArray.js_score = `❌${js}KB`;
+                  }
+                }
+                if (!value.passed) {
+                  if (value.auditProperty === "total.size") {
+                    const total = Math.round(value.actual / 1024);
+                    returnArray.total_score = `❌${total}KB`;
+                  }
+                }
+              }
+              return returnArray;
+            };
+
+            const assertionBody = (value) => {
+              const scores = getAssertionScore(value);
+              const filename = fileName(value.url);
+              if (typeof scoreArray[filename] === "undefined") {
+                scoreArray[filename] = {
+                  "tti_score": "✅",
+                  "fmp_score": "✅",
+                  "img_score": "✅",
+                  "js_score": "✅",
+                  "total_score": "✅",
+                };
+              }
+              const object = {
+                url: filename
+              };
+
+              scoreArray[filename] = { ...scoreArray[filename], ...object };
+              scoreArray[filename] = { ...scoreArray[filename], ...scores };
+            };
+            Object.values(assertions).forEach(assertionBody);
+
+            const assertionView = (value) => {
+              if (typeof value.url != "undefined") {
+                viewAssertion += `| ${value.url} | ${value.tti_score} | ${value.fmp_score} | ${value.img_score} | ${value.js_score} | ${value.total_score} |\n`;
+              }
+            };
+            Object.values(scoreArray).forEach(assertionView);
+
+            let viewText = "";
+            const tableBody = (urlArray) => {
+              if (urlArray.isRepresentativeRun) {
+                const accessibility = formatResult(urlArray.summary.accessibility);
+                const practices = formatResult(urlArray.summary["best-practices"]);
+                const performance = formatResult(urlArray.summary.performance);
+                const seo = formatResult(urlArray.summary.seo);
+                viewText += `| [${fileName(urlArray.url)}](${urls[urlArray.url]}) | ${score(performance)} ${performance} | ${score(accessibility)} ${accessibility} | ${score(practices)} ${practices} | ${score(seo)} ${seo} |\n`;
+                if ( 50 < score(performance) || 50 < score(performance) || 50 < score(accessibility) || 50 < score(practices) ) {
+                  existsError = 1;
+                }
+              }
+            };
+            Object.values(manifest).forEach(tableBody);
+
+            const commentBody = `
+            ⚡️ **Lighthouse Mobile Report**:
+
+            | File name | Performance | Accessibility | Best practices | SEO |
+            | --- | --- | --- | --- | --- |
+            ${viewText}
+
+            | File name | TTI | FMP | IMG | JS | TOTAL |
+            | --- | --- | --- | --- | --- | --- |
+            ${viewAssertion}
+
+            TTI: ページが完全にインタラクティブになるまでにかかる時間。
+            FMP: 主要コンテンツが表示されるまでの時間。
+            IMG: ページで読み込まれる画像のファイル容量。
+            JS: ページで読み込まれるjavascriptのファイル容量。
+            TOTAL: ページで読み込まれるファイル容量の合計。
+
+            ※表示されている結果は複数回の結果から得られた中央値です。
+            ※パフォーマンス結果はブレがありますリンク先の診断結果を見て判断してください。
+            `;
+
+            core.setOutput("exists_error", existsError);
+            await github.rest.issues.createComment({
+              issue_number: context.payload.pull_request.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: commentBody
+            });
