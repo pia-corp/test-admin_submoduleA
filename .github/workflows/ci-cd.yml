@@ -1,10 +1,35 @@
-# name: CI/CD Pipeline
+name: CI/CD Pipeline
 
-# on:
-#   pull_request:
-#     branches:
-#       - main
-#     types: [opened, edited, reopened, synchronize]
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, edited, reopened, synchronize]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'latest'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run HTMLHint
+        run: npx htmlhint public/**/*.html
+
+      - name: Run Stylelint
+        run: npx stylelint "public/assets/css/**/*.css"
+
+      - name: Run ESLint
+        run: npx eslint public/assets/js/**/*.js
+
 
 # jobs:
 #   check_links:
