@@ -52,6 +52,12 @@ jobs:
             SEO=$(cat "$file" | grep -oP '(?<=SEO</th><td class="numeric">)\d+')
 
             echo "| $RELATIVE_PATH | $PERFORMANCE | $ACCESSIBILITY | $BEST_PRACTICES | $SEO |" >> summary.md
+            echo "File: $RELATIVE_PATH" >> summary.md
+            echo "Performance: $PERFORMANCE" >> summary.md
+            echo "Accessibility: $ACCESSIBILITY" >> summary.md
+            echo "Best Practices: $BEST_PRACTICES" >> summary.md
+            echo "SEO: $SEO" >> summary.md
+            echo "" >> summary.md
           done
 
           gh pr comment ${{ github.event.pull_request.number }} --body "$(cat summary.md)"
