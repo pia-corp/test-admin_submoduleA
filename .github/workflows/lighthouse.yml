@@ -9,6 +9,9 @@ on:
 jobs:
   lighthouse:
     runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -18,19 +21,21 @@ jobs:
         with:
           node-version: 18
 
-      - name: Install Lighthouse
-        run: npm install -g lighthouse
+      - name: Install Dependencies
+        run: |
+          npm install -g lighthouse
+          sudo apt-get install parallel -y
 
       - name: Start static server
         run: |
           npx http-server public -p 8080 &
-          sleep 10  # サーバーが起動するのを待つ
+          sleep 10
           until curl -s -o /dev/null -w "%{http_code}" http://localhost:8080 | grep -q "200"; do
             echo "Waiting for server..."
             sleep 2
           done
 
-      - name: Run Lighthouse for desktop in parallel
+      - name: Run Lighthouse (Parallel)
         run: |
           echo "| File name | Device | Performance | Accessibility | Best practices | SEO |" > report.md
           echo "|-----------|--------|-------------|--------------|---------------|-----|" >> report.md
@@ -46,20 +51,13 @@ jobs:
             echo "| $file | Desktop | $performance | $accessibility | $best_practices | $seo |" >> report.md
           '
 
-      - name: Run Lighthouse for mobile in parallel
-        run: |
-          find public -name "*.html" | parallel -j 4 '
-            file={}
-            url="http://localhost:8080/${file#public/}"
-            results=$(lighthouse $url --quiet --output=json --chrome-flags="--headless" --preset=desktop)
-            performance=$(echo "$results" | jq -r ".categories.performance.score // 0 * 100")
-            accessibility=$(echo "$results" | jq -r ".categories.accessibility.score // 0 * 100")
-            best_practices=$(echo "$results" | jq -r ".categories.\"best-practices\".score // 0 * 100")
-            seo=$(echo "$results" | jq -r ".categories.seo.score // 0 * 100")
-            echo "| $file | Mobile | $performance | $accessibility | $best_practices | $seo |" >> report.md
-          '
+      - name: Debug report file
+        run: cat report.md
 
       - name: Add PR comment
+        if: success()
         uses: mshick/add-pr-comment@v2
         with:
           message-path: report.md
+          allow-repeats: true
+          refresh-old: true
