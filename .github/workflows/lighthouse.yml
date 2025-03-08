@@ -35,20 +35,23 @@ jobs:
             sleep 2
           done
 
-      - name: Run Lighthouse (Parallel)
+      - name: Run Lighthouse (Parallel for Desktop & Mobile)
         run: |
-          echo "| File name | Device | Performance | Accessibility | Best practices | SEO |" > report.md
-          echo "|-----------|--------|-------------|--------------|---------------|-----|" >> report.md
+          echo "| File name | Device  | Performance | Accessibility | Best practices | SEO |" > report.md
+          echo "|-----------|---------|-------------|--------------|---------------|-----|" >> report.md
 
           find public -name "*.html" | parallel -j 4 '
             file={}
             url="http://localhost:8080/${file#public/}"
-            results=$(lighthouse $url --quiet --output=json --chrome-flags="--headless" --preset=desktop)
-            performance=$(echo "$results" | jq -r ".categories.performance.score // 0 * 100")
-            accessibility=$(echo "$results" | jq -r ".categories.accessibility.score // 0 * 100")
-            best_practices=$(echo "$results" | jq -r ".categories.\"best-practices\".score // 0 * 100")
-            seo=$(echo "$results" | jq -r ".categories.seo.score // 0 * 100")
-            echo "| $file | Desktop | $performance | $accessibility | $best_practices | $seo |" >> report.md
+
+            for device in desktop mobile; do
+              results=$(lighthouse $url --quiet --output=json --chrome-flags="--headless" --preset=$device)
+              performance=$(echo "$results" | jq -r ".categories.performance.score // 0 * 100")
+              accessibility=$(echo "$results" | jq -r ".categories.accessibility.score // 0 * 100")
+              best_practices=$(echo "$results" | jq -r ".categories.\"best-practices\".score // 0 * 100")
+              seo=$(echo "$results" | jq -r ".categories.seo.score // 0 * 100")
+              echo "| $file | $device | $performance | $accessibility | $best_practices | $seo |" >> report.md
+            done
           '
 
       - name: Debug report file
