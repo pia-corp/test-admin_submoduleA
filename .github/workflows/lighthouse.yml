@@ -10,14 +10,14 @@ jobs:
   lighthouse-ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Set up Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: 'latest'
 
       - name: Install dependencies
         run: npm ci || npm install
@@ -33,11 +33,9 @@ jobs:
 
       - name: Run Lighthouse CI and generate report
         id: lighthouse
-        env:
-          LHCI_GITHUB_APP_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p .lighthouseci
-          lhci autorun --upload.outputDir=.lighthouseci --collect.numberOfRuns=1 || echo "LHCI failed!"
+          lhci autorun || echo "LHCI failed!"
 
           # Create a formatted Markdown report
           echo "## Lighthouse CI Report" > lighthouse-report.md
@@ -45,10 +43,10 @@ jobs:
           echo "| File name | Performance | Accessibility | Best practices | SEO | URL |" >> lighthouse-report.md
           echo "| --------- | ----------- | ------------- | -------------- | --- | --- |" >> lighthouse-report.md
 
-          for file in .lighthouseci/*.json; do
-            if [[ $(basename "$file") != *"manifest"* ]]; then
+          for file in .lighthouseci/lhr-*.json; do
+            if [ -f "$file" ]; then
               FILENAME=$(basename "$file" .json)
-              URL=$(jq -r '.requestedUrl' "$file")
+              URL=$(jq -r '.finalUrl' "$file")
               PERFORMANCE=$(jq -r '.categories.performance.score * 100 | floor' "$file")
               ACCESSIBILITY=$(jq -r '.categories.accessibility.score * 100 | floor' "$file")
               BEST_PRACTICES=$(jq -r '.categories["best-practices"].score * 100 | floor' "$file")
