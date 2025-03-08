@@ -10,10 +10,7 @@ jobs:
   lighthouseci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: latest
+      - uses: actions/checkout@v4.2.2
 
       - name: Run Lighthouse against a static dist dir
         id: lighthouse_audit
@@ -23,12 +20,6 @@ jobs:
           budgetPath: ./.github/config/budget.json
           temporaryPublicStorage: true
         continue-on-error: true
-
-      - name: report
-        run: |
-          const urls = ${{ steps.lighthouse_audit.outputs.links }};
-          const assertions =${{ steps.lighthouse_audit.outputs.assertionResults }};
-          const manifest = ${{ steps.lighthouse_audit.outputs.manifest }};
 
       - name: Post Lighthouse report to PR
         id: format_lighthouse_score
