@@ -40,6 +40,7 @@ jobs:
         run: |
           REPORTS_DIR="lighthouse-results"
           HTML_FILES=$(find $REPORTS_DIR -name "*.html")
+          echo "${HTML_FILES}"
 
           echo "| File name | Performance | Accessibility | Best practices | SEO |" > summary.md
           echo "| --------- | ----------- | ------------- | -------------- | --- |" >> summary.md
