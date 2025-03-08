@@ -48,7 +48,12 @@ jobs:
         run: |
           for file in $(find public -name "*.html"); do
             url="http://localhost:8080/${file#public/}"
-            results=$(lighthouse $url --quiet --output=json --chrome-flags="--headless" --preset=mobile)
+            results=$(lighthouse $url --quiet --output=json --chrome-flags="--headless" \
+              --throttling-method=simulate \
+              --throttling.cpuSlowdownMultiplier=4 \
+              --throttling.downloadThroughputKbps=1600 \
+              --throttling.uploadThroughputKbps=768 \
+              --throttling.latencyMs=150)
             performance=$(echo "$results" | jq -r '.categories.performance.score // 0 * 100')
             accessibility=$(echo "$results" | jq -r '.categories.accessibility.score // 0 * 100')
             best_practices=$(echo "$results" | jq -r '.categories."best-practices".score // 0 * 100')
