@@ -25,6 +25,7 @@ jobs:
 
       - name: Start local server
         run: |
+          npm install --global serve
           npx serve -s public -l 8080 &
           echo $! > .server-pid
           sleep 10
@@ -42,7 +43,8 @@ jobs:
             FULLPATH=${FILE_PATH#*://}
             OUTPUT_NAME=${FULLPATH#*/}
 
-            lighthouse "$url" --quiet --chrome-flags="--headless --disable-device-emulation --no-sandbox" --output=json --output-path="lighthouse-results/$OUTPUT_NAME.json" --throttling-method=provided --disable-network-throttling --debug
+            lighthouse "$url" --chrome-flags="--headless --disable-device-emulation --no-sandbox" --output=json --output-path="lighthouse-results/$OUTPUT_NAME.json" --throttling-method=provided --disable-network-throttling --debug
+            # lighthouse "$url" --quiet --chrome-flags="--headless --disable-device-emulation --no-sandbox" --output=json --output-path="lighthouse-results/$OUTPUT_NAME.json" --throttling-method=provided --disable-network-throttling --debug
           done
 
       - name: Upload Lighthouse results
