@@ -81,8 +81,9 @@ jobs:
             echo "| $ORIGINAL_PATH | $PERFORMANCE | $ACCESSIBILITY | $BEST_PRACTICES | $SEO | [Report]($REPORT_URL) |" >> summary.md
           done
 
-          # 要約情報を環境変数に保存
-          echo "summary=$(cat summary.md)" >> $GITHUB_OUTPUT
+          # サマリーをファイルに保存するだけにして、GITHUB_OUTPUTPに直接書き込まない
+          # 複雑なマークダウンテーブルではなく、単純なフラグを設定
+          echo "summary_created=true" >> $GITHUB_OUTPUT
 
       - name: Post Lighthouse report to PR
         env:
