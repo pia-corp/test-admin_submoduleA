@@ -32,8 +32,8 @@ jobs:
 
       - name: Run Lighthouse for desktop
         run: |
-          echo "| File name | Performance | Accessibility | Best practices | SEO |" > report.md
-          echo "|-----------|-------------|--------------|---------------|-----|" >> report.md
+          echo "| File name | Device | Performance | Accessibility | Best practices | SEO |" > report.md
+          echo "|-----------|--------|-------------|--------------|---------------|-----|" >> report.md
           for file in $(find public -name "*.html"); do
             url="http://localhost:8080/${file#public/}"
             results=$(lighthouse $url --quiet --output=json --chrome-flags="--headless" --preset=desktop)
@@ -41,7 +41,7 @@ jobs:
             accessibility=$(echo "$results" | jq -r '.categories.accessibility.score // 0 * 100')
             best_practices=$(echo "$results" | jq -r '.categories."best-practices".score // 0 * 100')
             seo=$(echo "$results" | jq -r '.categories.seo.score // 0 * 100')
-            echo "| $file | $performance | $accessibility | $best_practices | $seo |" >> report.md
+            echo "| $file | Desktop | $performance | $accessibility | $best_practices | $seo |" >> report.md
           done
 
       - name: Run Lighthouse for mobile
@@ -53,7 +53,7 @@ jobs:
             accessibility=$(echo "$results" | jq -r '.categories.accessibility.score // 0 * 100')
             best_practices=$(echo "$results" | jq -r '.categories."best-practices".score // 0 * 100')
             seo=$(echo "$results" | jq -r '.categories.seo.score // 0 * 100')
-            echo "| $file | $performance | $accessibility | $best_practices | $seo |" >> report.md
+            echo "| $file | Mobile | $performance | $accessibility | $best_practices | $seo |" >> report.md
           done
 
       - name: Add PR comment
