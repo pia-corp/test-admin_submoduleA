@@ -99,19 +99,28 @@ jobs:
 
       - name: Run Lighthouse for desktop
         run: |
-          echo "# Lighthouse Report" > report.md
+          echo "| File name | Performance | Accessibility | Best practices | SEO |" > report.md
+          echo "|-----------|-------------|--------------|---------------|-----|" >> report.md
           for file in $(find public -name "*.html"); do
             url="http://localhost:8080/${file#public/}"
-            score=$(lighthouse $url --quiet --output=json --chrome-flags="--headless" --preset=desktop --throttling-method=devtools --only-categories=performance | jq -r '.categories.performance.score // 0 * 100')
-            echo "| $file | Desktop | $score |" >> report.md
+            results=$(lighthouse $url --quiet --output=json --chrome-flags="--headless" --preset=desktop)
+            performance=$(echo "$results" | jq -r '.categories.performance.score // 0 * 100')
+            accessibility=$(echo "$results" | jq -r '.categories.accessibility.score // 0 * 100')
+            best_practices=$(echo "$results" | jq -r '.categories."best-practices".score // 0 * 100')
+            seo=$(echo "$results" | jq -r '.categories.seo.score // 0 * 100')
+            echo "| $file | $performance | $accessibility | $best_practices | $seo |" >> report.md
           done
 
       - name: Run Lighthouse for mobile
         run: |
           for file in $(find public -name "*.html"); do
             url="http://localhost:8080/${file#public/}"
-            score=$(lighthouse $url --quiet --output=json --chrome-flags="--headless" --preset=mobile | jq -r '.categories.performance.score * 100')
-            echo "| $file | Mobile | $score |" >> report.md
+            results=$(lighthouse $url --quiet --output=json --chrome-flags="--headless" --preset=mobile)
+            performance=$(echo "$results" | jq -r '.categories.performance.score // 0 * 100')
+            accessibility=$(echo "$results" | jq -r '.categories.accessibility.score // 0 * 100')
+            best_practices=$(echo "$results" | jq -r '.categories."best-practices".score // 0 * 100')
+            seo=$(echo "$results" | jq -r '.categories.seo.score // 0 * 100')
+            echo "| $file | $performance | $accessibility | $best_practices | $seo |" >> report.md
           done
 
       - name: Add PR comment
