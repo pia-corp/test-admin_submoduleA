@@ -22,14 +22,21 @@ jobs:
         run: npm install -g lighthouse
 
       - name: Start static server
-        run: npx http-server public -p 8080 &
+        run: |
+          npx http-server public -p 8080 &
+          sleep 5  # サーバーが起動するのを待つ
+          until curl -s -o /dev/null -w "%{http_code}" http://localhost:8080 | grep -q "200"; do
+            echo "Waiting for server..."
+            sleep 2
+          done
 
       - name: Run Lighthouse for desktop
         run: |
-          echo "# Lighthouse Report" > report.md
+          echo "| File | Device | Performance Score |" > report.md
+          echo "|------|--------|------------------|" >> report.md
           for file in $(find public -name "*.html"); do
             url="http://localhost:8080/${file#public/}"
-            score=$(lighthouse $url --quiet --output=json --chrome-flags="--headless" --preset=desktop --throttling-method=devtools --only-categories=performance | jq -r '.categories.performance.score // 0 * 100')
+            score=$(lighthouse $url --quiet --output=json --chrome-flags="--headless" --preset=desktop | jq -r '.categories.performance.score // 0 * 100')
             echo "| $file | Desktop | $score |" >> report.md
           done
 
@@ -37,7 +44,7 @@ jobs:
         run: |
           for file in $(find public -name "*.html"); do
             url="http://localhost:8080/${file#public/}"
-            score=$(lighthouse $url --quiet --output=json --chrome-flags="--headless" --preset=mobile | jq -r '.categories.performance.score * 100')
+            score=$(lighthouse $url --quiet --output=json --chrome-flags="--headless" --preset=mobile | jq -r '.categories.performance.score // 0 * 100')
             echo "| $file | Mobile | $score |" >> report.md
           done
 
