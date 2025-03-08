@@ -2,7 +2,7 @@ module.exports = {
   ci: {
     collect: {
       // 静的ビルドされたアプリケーションをテストするための設定
-      staticDistDir: './build', // あなたのビルドディレクトリに合わせて変更してください
+      staticDistDir: './public', // あなたのビルドディレクトリに合わせて変更してください
       // または動的サーバーをテストするためのURL設定
       // startServerCommand: 'npm run start', // 開発サーバーを起動するコマンド
       // url: ['http://localhost:3000', 'http://localhost:3000/about'], // テストするURL
