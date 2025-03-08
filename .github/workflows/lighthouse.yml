@@ -18,6 +18,9 @@ jobs:
         with:
           node-version: 'latest'
 
+      - name: Install dependencies
+        run: npm install -g lighthouse jq
+
       - name: Start local server
         run: |
           npx serve public -l 8080 &
@@ -25,43 +28,36 @@ jobs:
           sleep 5
 
       - name: Run Lighthouse
-        uses: treosh/lighthouse-ci-action@v12
-        with:
-          configPath: './.github/config/.lighthouserc.json'
-          budgetPath: ./.github/config/.budget.json
-          temporaryPublicStorage: true
+        run: |
+          mkdir -p lighthouse-results
+          URLS=("http://localhost:8080/index.html" "http://localhost:8080/about.html") # 必要に応じてURLを追加
+          for url in "${URLS[@]}"; do
+            BASENAME=$(basename "$url")
+            lighthouse "$url" --quiet --chrome-flags="--headless" --output=json --output-path="lighthouse-results/$BASENAME.json"
+          done
 
-      - name: Create results directory
-        run: mkdir -p lighthouse-results
-
-      - name: Post Lighthouse report to PR
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Generate Summary
         run: |
           REPORTS_DIR="lighthouse-results"
-          HTML_FILES=$(find $REPORTS_DIR -name "*.html")
-          echo "${HTML_FILES}"
+          JSON_FILES=$(find $REPORTS_DIR -name "*.json")
 
           echo "| File name | Performance | Accessibility | Best practices | SEO |" > summary.md
           echo "| --------- | ----------- | ------------- | -------------- | --- |" >> summary.md
 
-          for file in $HTML_FILES; do
-            RELATIVE_PATH=$(basename "$file")
-            PERFORMANCE=$(cat "$file" | grep -oP '(?<=Performance</th><td class="numeric">)\d+')
-            ACCESSIBILITY=$(cat "$file" | grep -oP '(?<=Accessibility</th><td class="numeric">)\d+')
-            BEST_PRACTICES=$(cat "$file" | grep -oP '(?<=Best Practices</th><td class="numeric">)\d+')
-            SEO=$(cat "$file" | grep -oP '(?<=SEO</th><td class="numeric">)\d+')
+          for file in $JSON_FILES; do
+            RELATIVE_PATH=$(basename "$file" .json)
+            PERFORMANCE=$(jq '.categories.performance.score * 100' "$file")
+            ACCESSIBILITY=$(jq '.categories.accessibility.score * 100' "$file")
+            BEST_PRACTICES=$(jq '.categories."best-practices".score * 100' "$file")
+            SEO=$(jq '.categories.seo.score * 100' "$file")
 
             echo "| $RELATIVE_PATH | $PERFORMANCE | $ACCESSIBILITY | $BEST_PRACTICES | $SEO |" >> summary.md
-            echo "File: $RELATIVE_PATH" >> summary.md
-            echo "Performance: $PERFORMANCE" >> summary.md
-            echo "Accessibility: $ACCESSIBILITY" >> summary.md
-            echo "Best Practices: $BEST_PRACTICES" >> summary.md
-            echo "SEO: $SEO" >> summary.md
-            echo "" >> summary.md
           done
 
-          gh pr comment ${{ github.event.pull_request.number }} --body "$(cat summary.md)"
+      - name: Post Lighthouse report to PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh pr comment ${{ github.event.pull_request.number }} --body "$(cat summary.md)"
 
       - name: Stop local server
         if: always()
