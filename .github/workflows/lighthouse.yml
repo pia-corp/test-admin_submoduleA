@@ -37,6 +37,7 @@ jobs:
           LHCI_GITHUB_APP_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p .lighthouseci
+
           lhci autorun || echo "LHCI failed!"
 
           # Create a formatted Markdown report
@@ -49,10 +50,12 @@ jobs:
             if [ -f "$file" ]; then
               FILENAME=$(basename "$file" .json)
               URL=$(jq -r '.finalUrl' "$file")
-              PERFORMANCE=$(jq -r '.categories.performance.score * 100 | floor' "$file")
-              ACCESSIBILITY=$(jq -r '.categories.accessibility.score * 100 | floor' "$file")
-              BEST_PRACTICES=$(jq -r '.categories["best-practices"].score * 100 | floor' "$file")
-              SEO=$(jq -r '.categories.seo.score * 100 | floor' "$file")
+
+              # Handle potential null values and convert to 0 if necessary
+              PERFORMANCE=$(jq -r '.categories.performance.score // 0 * 100 | floor' "$file")
+              ACCESSIBILITY=$(jq -r '.categories.accessibility.score // 0 * 100 | floor' "$file")
+              BEST_PRACTICES=$(jq -r '.categories["best-practices"].score // 0 * 100 | floor' "$file")
+              SEO=$(jq -r '.categories.seo.score // 0 * 100 | floor' "$file")
 
               echo "| $FILENAME | $PERFORMANCE | $ACCESSIBILITY | $BEST_PRACTICES | $SEO | $URL |" >> lighthouse-report.md
             fi
