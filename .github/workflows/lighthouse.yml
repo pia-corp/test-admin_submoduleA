@@ -24,7 +24,7 @@ jobs:
       - name: Start static server
         run: |
           npx http-server public -p 8080 &
-          sleep 5  # サーバーが起動するのを待つ
+          sleep 10  # サーバーが起動するのを待つ
           until curl -s -o /dev/null -w "%{http_code}" http://localhost:8080 | grep -q "200"; do
             echo "Waiting for server..."
             sleep 2
@@ -36,7 +36,8 @@ jobs:
           echo "|-----------|--------|-------------|--------------|---------------|-----|" >> report.md
           for file in $(find public -name "*.html"); do
             url="http://localhost:8080/${file#public/}"
-            results=$(lighthouse $url --quiet --output=json --chrome-flags="--headless" --preset=desktop)
+            results=$(lighthouse $url --quiet --output=json --chrome-flags="--headless" --preset=desktop \
+              --disable-storage-reset --wait-for-load)
             performance=$(echo "$results" | jq -r '.categories.performance.score // 0 * 100')
             accessibility=$(echo "$results" | jq -r '.categories.accessibility.score // 0 * 100')
             best_practices=$(echo "$results" | jq -r '.categories."best-practices".score // 0 * 100')
@@ -53,7 +54,8 @@ jobs:
               --throttling.cpuSlowdownMultiplier=4 \
               --throttling.downloadThroughputKbps=1600 \
               --throttling.uploadThroughputKbps=768 \
-              --throttling.latencyMs=150)
+              --throttling.latencyMs=150 \
+              --disable-storage-reset --wait-for-load)
             performance=$(echo "$results" | jq -r '.categories.performance.score // 0 * 100')
             accessibility=$(echo "$results" | jq -r '.categories.accessibility.score // 0 * 100')
             best_practices=$(echo "$results" | jq -r '.categories."best-practices".score // 0 * 100')
