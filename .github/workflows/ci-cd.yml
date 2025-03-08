@@ -43,19 +43,19 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
-            const errors = `\${{ steps.link-checker.outputs.errors }}`;
+            # const errors = `\${{ steps.link-checker.outputs.errors }}`;
             const errorsArray = '${{ steps.link-checker.outputs.errors }}'
 
-            let comment = "";
+            let message = "";
             for (let key in hash) {
-              comment += `| ${key} | ${hash[key]} |\n`;
+              message += `| ${key} | ${hash[key]} |\n`;
             }
 
             const comment = `
               ## Broken Links Report
               | ファイル名 | リンク切れパス |
               | :-- | :-- |
-              ${comment}
+              ${message}
             `;
             github.rest.issues.createComment({
               ...context.repo,
