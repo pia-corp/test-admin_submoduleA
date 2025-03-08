@@ -1,10 +1,8 @@
-name: Lighthouse CI
+name: Lighthouse Audit
 
 on:
   pull_request:
-    branches:
-      - main
-    types: [opened, edited, reopened, synchronize]
+    branches: [ main ]
 
 jobs:
   lighthouse-audit:
@@ -20,16 +18,15 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npm install -g @lhci/cli@0.11.x serve
+          npm install -g @lhci/cli@0.11.x serve jq
 
       - name: Start local server
         run: |
-          serve public &
+          npx serve public -l 8080 &
           # Save the PID to kill the server later
           echo $! > .server-pid
-
-      - name: Wait for server to start
-        run: sleep 5
+          # Wait for server to start
+          sleep 5
 
       - name: Run Lighthouse audit
         id: lighthouse
@@ -54,21 +51,42 @@ jobs:
             FILE_REPORT_DIR="$REPORTS_DIR/$FILENAME"
             mkdir -p "$FILE_REPORT_DIR"
 
-            # Run Lighthouse
-            URL="http://localhost:3000/$(echo $file | sed 's|^public/||')"
-            lhci collect --url="$URL" --output="json" --outputDir="$FILE_REPORT_DIR"
+            # Create a simple config file for lighthouse
+            echo '{
+              "ci": {
+                "collect": {
+                  "settings": {
+                    "preset": "desktop"
+                  }
+                }
+              }
+            }' > lhci-config.json
 
-            # Extract scores from the latest report
-            LATEST_REPORT=$(ls -t $FILE_REPORT_DIR/lhr-*.json | head -n 1)
+            # Run Lighthouse directly with npx
+            URL="http://localhost:8080/$(echo $file | sed 's|^public/||')"
+            echo "Running Lighthouse on $URL"
+            npx lighthouse "$URL" --chrome-flags="--headless --no-sandbox --disable-gpu" --output=json --output-path="$FILE_REPORT_DIR/report.json"
 
-            # Extract scores using jq
-            PERFORMANCE=$(cat $LATEST_REPORT | jq '.categories.performance.score * 100' | xargs printf "%.0f")
-            ACCESSIBILITY=$(cat $LATEST_REPORT | jq '.categories.accessibility.score * 100' | xargs printf "%.0f")
-            BEST_PRACTICES=$(cat $LATEST_REPORT | jq '.categories["best-practices"].score * 100' | xargs printf "%.0f")
-            SEO=$(cat $LATEST_REPORT | jq '.categories.seo.score * 100' | xargs printf "%.0f")
+            if [ -f "$FILE_REPORT_DIR/report.json" ]; then
+              # Extract scores using jq
+              PERFORMANCE=$(cat "$FILE_REPORT_DIR/report.json" | jq -r '.categories.performance.score * 100' | xargs printf "%.0f")
+              ACCESSIBILITY=$(cat "$FILE_REPORT_DIR/report.json" | jq -r '.categories.accessibility.score * 100' | xargs printf "%.0f")
+              BEST_PRACTICES=$(cat "$FILE_REPORT_DIR/report.json" | jq -r '.categories["best-practices"].score * 100' | xargs printf "%.0f")
+              SEO=$(cat "$FILE_REPORT_DIR/report.json" | jq -r '.categories.seo.score * 100' | xargs printf "%.0f")
 
-            # Add to markdown table
-            echo "| $RELATIVE_PATH | $PERFORMANCE | $ACCESSIBILITY | $BEST_PRACTICES | $SEO |" >> $REPORTS_DIR/summary.md
+              # Print scores for debugging
+              echo "Scores for $RELATIVE_PATH:"
+              echo "  Performance: $PERFORMANCE"
+              echo "  Accessibility: $ACCESSIBILITY"
+              echo "  Best Practices: $BEST_PRACTICES"
+              echo "  SEO: $SEO"
+
+              # Add to markdown table
+              echo "| $RELATIVE_PATH | $PERFORMANCE | $ACCESSIBILITY | $BEST_PRACTICES | $SEO |" >> $REPORTS_DIR/summary.md
+            else
+              echo "Error: Report not generated for $RELATIVE_PATH"
+              echo "| $RELATIVE_PATH | Error | Error | Error | Error |" >> $REPORTS_DIR/summary.md
+            fi
           done
 
           # Save the markdown content to a variable for the PR comment
@@ -77,11 +95,18 @@ jobs:
           echo "$SUMMARY_CONTENT" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
+      - name: Upload Lighthouse reports
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: lighthouse-reports
+          path: lighthouse-reports
+
       - name: Kill server
         if: always()
         run: |
           if [ -f .server-pid ]; then
-            kill $(cat .server-pid)
+            kill $(cat .server-pid) || true
           fi
 
       - name: Comment on PR
