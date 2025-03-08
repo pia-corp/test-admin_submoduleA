@@ -35,23 +35,30 @@ jobs:
             sleep 2
           done
 
-      - name: Run Lighthouse (Parallel for Desktop & Mobile)
+      - name: Run Lighthouse for Desktop & Mobile (Parallel)
         run: |
           echo "| File name | Device  | Performance | Accessibility | Best practices | SEO |" > report.md
           echo "|-----------|---------|-------------|--------------|---------------|-----|" >> report.md
 
-          find public -name "*.html" | parallel -j 4 '
+          find public -name "*.html" | parallel -j 2 '
             file={}
             url="http://localhost:8080/${file#public/}"
 
-            for device in desktop mobile; do
-              results=$(lighthouse $url --quiet --output=json --chrome-flags="--headless" --preset=$device)
-              performance=$(echo "$results" | jq -r ".categories.performance.score // 0 * 100")
-              accessibility=$(echo "$results" | jq -r ".categories.accessibility.score // 0 * 100")
-              best_practices=$(echo "$results" | jq -r ".categories.\"best-practices\".score // 0 * 100")
-              seo=$(echo "$results" | jq -r ".categories.seo.score // 0 * 100")
-              echo "| $file | $device | $performance | $accessibility | $best_practices | $seo |" >> report.md
-            done
+            # Desktop
+            results_desktop=$(lighthouse "$url" --quiet --output=json --chrome-flags="--headless" --preset=desktop)
+            performance_d=$(echo "$results_desktop" | jq -r ".categories.performance.score // 0 * 100")
+            accessibility_d=$(echo "$results_desktop" | jq -r ".categories.accessibility.score // 0 * 100")
+            best_practices_d=$(echo "$results_desktop" | jq -r ".categories.\"best-practices\".score // 0 * 100")
+            seo_d=$(echo "$results_desktop" | jq -r ".categories.seo.score // 0 * 100")
+            echo "| $file | Desktop | $performance_d | $accessibility_d | $best_practices_d | $seo_d |" >> report.md
+
+            # Mobile
+            results_mobile=$(lighthouse "$url" --quiet --output=json --chrome-flags="--headless" --preset=mobile)
+            performance_m=$(echo "$results_mobile" | jq -r ".categories.performance.score // 0 * 100")
+            accessibility_m=$(echo "$results_mobile" | jq -r ".categories.accessibility.score // 0 * 100")
+            best_practices_m=$(echo "$results_mobile" | jq -r ".categories.\"best-practices\".score // 0 * 100")
+            seo_m=$(echo "$results_mobile" | jq -r ".categories.seo.score // 0 * 100")
+            echo "| $file | Mobile  | $performance_m | $accessibility_m | $best_practices_m | $seo_m |" >> report.md
           '
 
       - name: Debug report file
@@ -63,4 +70,3 @@ jobs:
         with:
           message-path: report.md
           allow-repeats: true
-          refresh-old: true
