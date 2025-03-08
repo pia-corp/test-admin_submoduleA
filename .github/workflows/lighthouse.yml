@@ -64,11 +64,18 @@ jobs:
             echo "| $RELATIVE_PATH | $PERFORMANCE | $ACCESSIBILITY | $BEST_PRACTICES | $SEO | $URL |" >> summary.md
           done
 
-      - name: Upload reports to storage
+      - name: Create GitHub release if not exists
         run: |
-          # レポートをGitHubにアップロード（またはストレージに保存）
+          # Check if the release already exists, create if not
+          gh release view v1.0.0 || gh release create v1.0.0 --title "Lighthouse Audit Reports" --notes "Automated Lighthouse Reports"
+
+      - name: Upload reports to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # レポートをGitHubのリリースにアップロード
           for file in lighthouse-results/*.json; do
-            gh release upload ${{ github.event.repository.name }} "$(basename $file)" "$file" --clobber
+            gh release upload v1.0.0 "$(basename $file)" "$file" --clobber
           done
 
       - name: Post Lighthouse report to PR
