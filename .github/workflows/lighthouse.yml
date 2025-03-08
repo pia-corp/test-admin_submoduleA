@@ -26,4 +26,6 @@ jobs:
 
       - name: report
         run: |
-          echo "${{ steps.lighthouse_audit.outputs.links }};"
+          echo "${{ steps.lighthouse_audit.outputs.report }};"
+          echo "${{ steps.lighthouse_audit.outputs.assertionResults }};"
+          echo "${{ steps.lighthouse_audit.outputs.manifest }};"
