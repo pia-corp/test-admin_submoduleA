@@ -35,6 +35,8 @@ jobs:
         run: mkdir -p lighthouse-results
 
       - name: Post Lighthouse report to PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           REPORTS_DIR="lighthouse-results"
           HTML_FILES=$(find $REPORTS_DIR -name "*.html")
