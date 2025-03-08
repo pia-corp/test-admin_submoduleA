@@ -46,8 +46,8 @@ jobs:
             const errorsArray = ${{ steps.link-checker.outputs.errors }}
 
             let message = "";
-            for (let key in hash) {
-              message += `| ${key} | ${hash[key]} |\n`;
+            for (let key in message) {
+              message += `| ${key} | ${message[key]} |\n`;
             }
 
             const comment = `
