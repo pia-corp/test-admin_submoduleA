@@ -20,103 +20,96 @@ jobs:
 
       - name: Install dependencies
         run: |
-          npm install -g @lhci/cli puppeteer
+          npm install -g @lhci/cli@0.12.x
           npm install -g serve
 
       - name: Start local server
         run: |
           npx serve public -l 8080 &
-          # Save PID to kill server later
           echo $! > .server-pid
-          # Wait for server to start
           sleep 5
+          echo "Server started on port 8080"
 
-      - name: Create LHCI configuration
-        run: |
-          cat > lighthouserc.json << EOF
-          {
-            "ci": {
-              "collect": {
-                "url": [],
-                "staticDistDir": "./public",
-                "numberOfRuns": 1,
-                "settings": {
-                  "preset": "desktop"
-                }
-              },
-              "upload": {
-                "target": "temporary-public-storage"
-              }
-            }
-          }
-          EOF
-
-      - name: Run Lighthouse CI against static dir
+      - name: Run Lighthouse audits and collect scores
         id: lighthouse
         run: |
-          echo "Running Lighthouse CI"
+          echo "Running Lighthouse audits..."
 
-          # Create results directory
-          REPORTS_DIR="lighthouse-reports"
-          mkdir -p $REPORTS_DIR
+          # Create markdown file for results
+          echo "| File name | Performance | Accessibility | Best practices | SEO |" > lighthouse-results.md
+          echo "| --------- | ----------- | ------------- | -------------- | --- |" >> lighthouse-results.md
 
-          # Initialize markdown table
-          echo "| File name | Performance | Accessibility | Best practices | SEO |" > $REPORTS_DIR/summary.md
-          echo "| --------- | ----------- | ------------- | -------------- | --- |" >> $REPORTS_DIR/summary.md
-
-          # Find all HTML files in public folder
+          # Find all HTML files
           HTML_FILES=$(find public -name "*.html")
 
-          # Process each HTML file
+          # Create temporary directory for reports
+          mkdir -p /tmp/lighthouse-reports
+
+          # Setup a file to store the Lighthouse report URL
+          touch /tmp/lhci-report-url.txt
+
+          # For each HTML file
           for file in $HTML_FILES; do
-            # Get relative path to display in report
             RELATIVE_PATH=$(echo $file | sed 's|^public/||')
-            FILENAME=$(basename "$file" .html)
-            echo "Processing $RELATIVE_PATH"
+            echo "Processing: $RELATIVE_PATH"
 
-            # Run Lighthouse CI for this specific file
-            URL="http://localhost:8080/$(echo $file | sed 's|^public/||')"
+            # Full URL to the file
+            FILE_URL="http://localhost:8080/$RELATIVE_PATH"
+            echo "Testing URL: $FILE_URL"
 
-            # Run LHCI and save output to a JSON file
-            lhci collect --url="$URL" --outDir="$REPORTS_DIR/$FILENAME"
+            # Run Lighthouse CI
+            lhci collect --url="$FILE_URL" --verbose
 
-            # Get the latest JSON report
-            REPORT_FILE=$(find "$REPORTS_DIR/$FILENAME" -name "*.json" | head -n 1)
+            # Find the latest report
+            REPORT_PATH=$(find ./.lighthouseci -name "*.json" | sort | tail -n 1)
+            echo "Report path: $REPORT_PATH"
 
-            if [ -f "$REPORT_FILE" ]; then
-              # Extract scores
-              PERFORMANCE=$(node -e "console.log(Math.round(require('$REPORT_FILE').categories.performance.score * 100))")
-              ACCESSIBILITY=$(node -e "console.log(Math.round(require('$REPORT_FILE').categories.accessibility.score * 100))")
-              BEST_PRACTICES=$(node -e "console.log(Math.round(require('$REPORT_FILE').categories['best-practices'].score * 100))")
-              SEO=$(node -e "console.log(Math.round(require('$REPORT_FILE').categories.seo.score * 100))")
+            if [ -f "$REPORT_PATH" ]; then
+              # Extract scores using a more reliable method
+              PERFORMANCE=$(node -e "try { const report = require('$REPORT_PATH'); console.log(Math.round(report.categories.performance.score * 100)); } catch(e) { console.log('Error'); }")
+              ACCESSIBILITY=$(node -e "try { const report = require('$REPORT_PATH'); console.log(Math.round(report.categories.accessibility.score * 100)); } catch(e) { console.log('Error'); }")
+              BEST_PRACTICES=$(node -e "try { const report = require('$REPORT_PATH'); console.log(Math.round(report.categories['best-practices'].score * 100)); } catch(e) { console.log('Error'); }")
+              SEO=$(node -e "try { const report = require('$REPORT_PATH'); console.log(Math.round(report.categories.seo.score * 100)); } catch(e) { console.log('Error'); }")
 
-              # Print scores for debugging
+              # Debug: Print scores
               echo "Scores for $RELATIVE_PATH:"
               echo "  Performance: $PERFORMANCE"
               echo "  Accessibility: $ACCESSIBILITY"
               echo "  Best Practices: $BEST_PRACTICES"
               echo "  SEO: $SEO"
 
-              # Add to markdown table
-              echo "| $RELATIVE_PATH | $PERFORMANCE | $ACCESSIBILITY | $BEST_PRACTICES | $SEO |" >> $REPORTS_DIR/summary.md
+              # Add to results table
+              echo "| $RELATIVE_PATH | $PERFORMANCE | $ACCESSIBILITY | $BEST_PRACTICES | $SEO |" >> lighthouse-results.md
             else
-              echo "Error: Report not generated for $RELATIVE_PATH"
-              echo "| $RELATIVE_PATH | Error | Error | Error | Error |" >> $REPORTS_DIR/summary.md
+              echo "Error: No report found for $RELATIVE_PATH"
+              echo "| $RELATIVE_PATH | Error | Error | Error | Error |" >> lighthouse-results.md
             fi
+
+            # Clear previous reports for next file
+            rm -f /tmp/lighthouse-reports/*
           done
 
-          # Run LHCI upload to get sharable URL
-          echo "Uploading full reports to temporary public storage"
-          UPLOAD_RESULT=$(lhci upload --target=temporary-public-storage)
-          REPORT_URL=$(echo "$UPLOAD_RESULT" | grep -o 'https://storage.googleapis.com/lighthouse-infrastructure.appspot.com/reports/[^"]*')
+          # Upload results to temporary storage
+          echo "Uploading results to temporary storage..."
+          UPLOAD_OUTPUT=$(lhci upload --target=temporary-public-storage)
+          echo "Upload output: $UPLOAD_OUTPUT"
 
-          # Save results to environment variable for comment
-          SUMMARY_CONTENT=$(cat $REPORTS_DIR/summary.md)
-          echo "summary<<EOF" >> $GITHUB_ENV
-          echo "$SUMMARY_CONTENT" >> $GITHUB_ENV
+          # Extract the report URL from upload output
+          REPORT_URL=$(echo "$UPLOAD_OUTPUT" | grep -o 'https://storage.googleapis.com/lighthouse-infrastructure.appspot.com/reports/[^[:space:]]*' | head -n 1)
+          echo "Report URL: $REPORT_URL"
+
+          # Save results to GITHUB_ENV
+          echo "results<<EOF" >> $GITHUB_ENV
+          cat lighthouse-results.md >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
+          # Save report URL to GITHUB_ENV
           echo "report_url=$REPORT_URL" >> $GITHUB_ENV
+
+          # Save results as artifact
+          mkdir -p ./lighthouse-results
+          cp lighthouse-results.md ./lighthouse-results/
+          cp -r ./.lighthouseci ./lighthouse-results/
 
       - name: Kill server
         if: always()
@@ -130,24 +123,27 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const summary = process.env.summary;
+            const results = process.env.results;
             const reportUrl = process.env.report_url;
+
+            let comment = `## 📊 Lighthouse Audit Results\n\n${results}\n\n`;
+
+            if (reportUrl && reportUrl !== "null" && reportUrl !== "") {
+              comment += `[📋 View detailed Lighthouse report](${reportUrl})\n\n`;
+            }
+
+            comment += `_This comment was automatically generated using Lighthouse CI._`;
 
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: `## 📊 Lighthouse Audit Results
-            ${summary}
-
-            [📋 View detailed Lighthouse report](${reportUrl})
-
-            _This comment was automatically generated using Lighthouse CI._`
+              body: comment
             });
 
-      - name: Upload Lighthouse reports
+      - name: Upload Lighthouse results
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: lighthouse-reports
-          path: lighthouse-reports
+          name: lighthouse-results
+          path: ./lighthouse-results
