@@ -26,6 +26,15 @@ jobs:
 
       - name: report
         run: |
-          echo "${{ steps.lighthouse_audit.outputs.report }};"
-          echo "${{ steps.lighthouse_audit.outputs.assertionResults }};"
-          echo "${{ steps.lighthouse_audit.outputs.manifest }};"
+          const urls = ${{ steps.lighthouse_audit.outputs.links }};
+          const assertions =${{ steps.lighthouse_audit.outputs.assertionResults }};
+          const manifest = ${{ steps.lighthouse_audit.outputs.manifest }};
+
+      - name: Post Lighthouse report to PR
+        run: |
+          echo "File name | Device | Performance | Accessibility | Best practices | SEO | report url" > report.md
+          echo "--- | --- | --- | --- | --- | --- | ---" >> report.md
+          for (let i = 0; i < urls.length; i++) {
+            echo "${manifest[i].fileName} | mobile | ${assertions[i].performance} | ${assertions[i].accessibility} | ${assertions[i].best-practices} | ${assertions[i].seo} | ${urls[i]}" >> report.md
+          }
+          gh pr comment ${{ github.event.pull_request.number }} --body "$(cat report.md)"
