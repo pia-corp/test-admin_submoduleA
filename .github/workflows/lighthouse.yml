@@ -2,19 +2,21 @@ name: Lighthouse Audit
 
 on:
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
+    types: [opened, edited, reopened, synchronize]
 
 jobs:
   lighthouse-audit:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version: 'latest'
 
       - name: Install dependencies
         run: |
