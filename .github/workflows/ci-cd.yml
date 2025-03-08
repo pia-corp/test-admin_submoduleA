@@ -40,3 +40,21 @@ jobs:
             echo "| :-- | :-- |"
             echo '${{ steps.link-checker.outputs.errors }}' | jq -r 'to_entries[] | .key as $key | .value[] | "| \($key) | \(.) |"'
           } >> $GITHUB_STEP_SUMMARY
+
+      - name: Post broken links to PR
+        if: ${{ github.event_name == 'pull_request' }}
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const errors = `\${{ steps.link-checker.outputs.errors }}`;
+            const comment = `
+              ## Broken Links Report
+              | ファイル名 | リンク切れパス |
+              | :-- | :-- |
+              ${errors.split('\n').map(line => `| ${line.replace(/,/g, ' | ')} |`).join('\n')}
+            `;
+            github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
