@@ -1,8 +1,10 @@
-name: Lighthouse CI
+name: CI/CD Pipeline
 
 on:
   pull_request:
-    branches: [ main, master ]
+    branches:
+      - main
+    types: [opened, edited, reopened, synchronize]
 
 jobs:
   lighthouse-ci:
@@ -31,6 +33,8 @@ jobs:
 
       - name: Run Lighthouse CI and generate report
         id: lighthouse
+        env:
+          LHCI_GITHUB_APP_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p .lighthouseci
           lhci autorun --upload.outputDir=.lighthouseci --collect.numberOfRuns=1 || echo "LHCI failed!"
