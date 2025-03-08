@@ -44,11 +44,12 @@ jobs:
         with:
           script: |
             const errors = `\${{ steps.link-checker.outputs.errors }}`;
+            const formattedErrors = errors.split('\n').map(line => `| ${line.replace(/,/g, ' | ')} |`).join('\n');
             const comment = `
               ## Broken Links Report
               | ファイル名 | リンク切れパス |
               | :-- | :-- |
-              ${errors}
+              ${formattedErrors}
             `;
             github.rest.issues.createComment({
               ...context.repo,
