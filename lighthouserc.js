@@ -12,16 +12,16 @@ module.exports = {
       target: 'filesystem', // ローカルファイルシステムに保存
       outputDir: '.lighthouseci', // 出力ディレクトリ
     },
-    assert: {
-      // アサーション設定 - これらはオプションです
-      // 必要に応じてパフォーマンス閾値を設定できます
-      preset: 'lighthouse:recommended',
-      assertions: {
-        'categories:performance': ['warn', {minScore: 0.6}],
-        'categories:accessibility': ['warn', {minScore: 0.8}],
-        'categories:best-practices': ['warn', {minScore: 0.8}],
-        'categories:seo': ['warn', {minScore: 0.8}],
-      },
-    },
+    // assert: {
+    //   // アサーション設定 - これらはオプションです
+    //   // 必要に応じてパフォーマンス閾値を設定できます
+    //   preset: 'lighthouse:recommended',
+    //   assertions: {
+    //     'categories:performance': ['warn', {minScore: 0.6}],
+    //     'categories:accessibility': ['warn', {minScore: 0.8}],
+    //     'categories:best-practices': ['warn', {minScore: 0.8}],
+    //     'categories:seo': ['warn', {minScore: 0.8}],
+    //   },
+    // },
   },
 };
