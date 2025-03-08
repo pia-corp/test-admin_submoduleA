@@ -38,58 +38,66 @@ jobs:
 
           # 各HTMLページに対してLighthouseを実行
           for url in $URLS; do
-            BASENAME=$(basename "$url" .html)  # URLからページ名（例: index, about）を取得
-            # URLのディレクトリ構造も含めたファイル名を作成
-            FILE_PATH="lighthouse-results/$(echo $url | sed 's|http://localhost:8080/||' | sed 's|/|_|g').json"
-            lighthouse "$url" --quiet --chrome-flags="--headless --disable-device-emulation --no-sandbox" --output=json --output-path="$FILE_PATH" --throttling-method=provided --disable-network-throttling
+            FILE_PATH=${url#http://localhost:8080/}  # URLからファイルパスを取得
+            DIR_NAME=$(dirname "$FILE_PATH")  # ディレクトリ部分を取得
+            BASE_NAME=$(basename "$FILE_PATH")  # ファイル名部分を取得
+            OUTPUT_NAME=${DIR_NAME//\//_}_${BASE_NAME}  # ディレクトリ区切りを_に変換
+
+            lighthouse "$url" --quiet --chrome-flags="--headless --disable-device-emulation --no-sandbox" --output=json --output-path="lighthouse-results/$OUTPUT_NAME.json" --throttling-method=provided --disable-network-throttling
           done
 
+      - name: Upload Lighthouse results
+        uses: actions/upload-artifact@v4
+        with:
+          name: lighthouse-reports
+          path: lighthouse-results/
+          retention-days: 14
+
       - name: Generate Summary
+        id: summary
         run: |
           REPORTS_DIR="lighthouse-results"
           JSON_FILES=$(find $REPORTS_DIR -name "*.json")
+
+          # GitHub Actions ArtifactsのベースURL
+          ARTIFACTS_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts"
 
           echo "| File name | Performance | Accessibility | Best practices | SEO | URL |" > summary.md
           echo "| --------- | ----------- | ------------- | -------------- | --- | --- |" >> summary.md
 
           for file in $JSON_FILES; do
-            RELATIVE_PATH=$(basename "$file" .json)  # ページ名をファイル名から取得
+            FILE_NAME=$(basename "$file" .json)  # ファイル名を取得
+            ORIGINAL_PATH=$(echo "$FILE_NAME" | sed 's/_/\//g')  # _をディレクトリ区切りに戻す
+            EXTENSION=$(echo "$ORIGINAL_PATH" | awk -F. '{print $NF}')  # 拡張子を取得
+
             PERFORMANCE=$(jq '.categories.performance.score * 100' "$file")
             ACCESSIBILITY=$(jq '.categories.accessibility.score * 100' "$file")
             BEST_PRACTICES=$(jq '.categories."best-practices".score * 100' "$file")
             SEO=$(jq '.categories.seo.score * 100' "$file")
-            # URLをレポートに追加
-            URL="http://localhost:8080/$(echo $RELATIVE_PATH | sed 's|_|/|g').html"
 
-            echo "| $RELATIVE_PATH | $PERFORMANCE | $ACCESSIBILITY | $BEST_PRACTICES | $SEO | $URL |" >> summary.md
+            # レポートのURL
+            REPORT_URL="${ARTIFACTS_URL}/lighthouse-reports"
+
+            echo "| $ORIGINAL_PATH | $PERFORMANCE | $ACCESSIBILITY | $BEST_PRACTICES | $SEO | [Report]($REPORT_URL) |" >> summary.md
           done
 
-      - name: Create GitHub release if not exists
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          export GH_TOKEN=${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG="lighthouse-report-${{ github.run_id }}"
-          if ! gh release view "$RELEASE_TAG" &> /dev/null; then
-            gh release create "$RELEASE_TAG" --title "Lighthouse Audit Reports ($RELEASE_TAG)" --notes "Automated Lighthouse Reports"
-          fi
-
-      - name: Upload reports to GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          export GH_TOKEN=${{ secrets.GITHUB_TOKEN }}
-          RELEASE_TAG="lighthouse-report-${{ github.run_id }}"
-          for file in lighthouse-results/*.json; do
-            gh release upload "$RELEASE_TAG" "$(basename $file)" "$file" --clobber
-          done
+          # 要約情報を環境変数に保存
+          echo "summary=$(cat summary.md)" >> $GITHUB_OUTPUT
 
       - name: Post Lighthouse report to PR
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          export GH_TOKEN=${{ secrets.GITHUB_TOKEN }}
-          gh pr comment ${{ github.event.pull_request.number }} --body "$(cat summary.md)"
+          cat <<EOF > comment.md
+          ## Lighthouse Audit Report
+
+          $(cat summary.md)
+
+          レポートの詳細は [Artifacts](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts) で確認できます。
+          ダウンロード後、JSONファイルをLighthouse Viewerで開くことができます: https://googlechrome.github.io/lighthouse/viewer/
+          EOF
+
+          gh pr comment ${{ github.event.pull_request.number }} --body "$(cat comment.md)"
 
       - name: Stop local server
         if: always()
