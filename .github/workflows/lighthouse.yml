@@ -27,6 +27,12 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
+            const urls = ${{ steps.lighthouse_audit.outputs.links }};
+            const assertions =${{ steps.lighthouse_audit.outputs.assertionResults }};
+            const manifest = ${{ steps.lighthouse_audit.outputs.manifest }};
+
+
+
             echo "File name | Device | Performance | Accessibility | Best practices | SEO | report url" > report.md
             echo "--- | --- | --- | --- | --- | --- | ---" >> report.md
             for (let i = 0; i < urls.length; i++) {
