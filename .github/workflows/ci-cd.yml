@@ -43,7 +43,6 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
-            # const errors = `\${{ steps.link-checker.outputs.errors }}`;
             const errorsArray = '${{ steps.link-checker.outputs.errors }}'
 
             let message = "";
