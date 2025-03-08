@@ -43,7 +43,7 @@ jobs:
             FULLPATH=${FILE_PATH#*://}
             OUTPUT_NAME=${FULLPATH#*/}
 
-            lighthouse -A "$url" --quiet --chrome-flags="--headless --disable-device-emulation --no-sandbox" --output=json --output-path="lighthouse-results/$OUTPUT_NAME.json" --throttling-method=provided --disable-network-throttling
+            lighthouse "$url" -G --quiet --chrome-flags="--headless --disable-device-emulation --no-sandbox" --output=json --output-path="lighthouse-results/$OUTPUT_NAME.json" --throttling-method=provided --disable-network-throttling
           done
 
       - name: Upload Lighthouse results
