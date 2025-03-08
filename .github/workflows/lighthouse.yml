@@ -69,7 +69,7 @@ jobs:
             # Run Lighthouse directly with npx
             URL="http://localhost:8080/$(echo $file | sed 's|^public/||')"
             echo "Running Lighthouse on $URL"
-            npx lighthouse "$URL" --chrome-flags="--headless --no-sandbox --disable-gpu" --output=json --output-path="$FILE_REPORT_DIR/report.json"
+            npx lighthouse "$URL" --chrome-flags="--headless --no-sandbox --disable-gpu" --disable-storage-reset --output=json --output-path="$FILE_REPORT_DIR/report.json"
 
             if [ -f "$FILE_REPORT_DIR/report.json" ]; then
               # Extract scores using jq
