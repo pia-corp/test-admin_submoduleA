@@ -48,7 +48,7 @@ jobs:
               ## Broken Links Report
               | ファイル名 | リンク切れパス |
               | :-- | :-- |
-              ${errors.split('\n').map(line => `| ${line.replace(/,/g, ' | ')} |`).join('\n')}
+              ${errors}
             `;
             github.rest.issues.createComment({
               ...context.repo,
