@@ -1,12 +1,10 @@
 name: CI/CD Pipeline
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
     branches:
       - main
+    types: [opened, edited, reopened, synchronize]
 
 jobs:
   check_links:
@@ -42,7 +40,6 @@ jobs:
           } >> $GITHUB_STEP_SUMMARY
 
       - name: Post broken links to PR
-        if: ${{ github.event_name == 'pull_request' }}
         uses: actions/github-script@v6
         with:
           script: |
