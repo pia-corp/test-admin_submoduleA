@@ -1,0 +1,16 @@
+{
+  "resourceSizes": [
+    {
+      "resourceType": "script",
+      "budget": 125
+    },
+    {
+      "resourceType": "image",
+      "budget": 300
+    },
+    {
+      "resourceType": "stylesheet",
+      "budget": 50
+    }
+  ]
+}

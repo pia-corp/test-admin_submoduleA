@@ -35,19 +35,26 @@ jobs:
         run: mkdir -p lighthouse-results
 
       - name: Post Lighthouse report to PR
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs');
-            const summary = fs.readFileSync('summary.md', 'utf8');
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          REPORTS_DIR="lighthouse-results"
+          HTML_FILES=$(find $REPORTS_DIR -name "*.html")
 
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `## 📊 Lighthouse Audit Results\n\n${summary}\n\n_This comment was automatically generated from Lighthouse audit._`
-            });
+          echo "| File name | Performance | Accessibility | Best practices | SEO |" > summary.md
+          echo "| --------- | ----------- | ------------- | -------------- | --- |" >> summary.md
+
+          for file in $HTML_FILES; do
+            RELATIVE_PATH=$(basename "$file")
+            PERFORMANCE=$(cat "$file" | grep -oP '(?<=Performance</th><td class="numeric">)\d+')
+            ACCESSIBILITY=$(cat "$file" | grep -oP '(?<=Accessibility</th><td class="numeric">)\d+')
+            BEST_PRACTICES=$(cat "$file" | grep -oP '(?<=Best Practices</th><td class="numeric">)\d+')
+            SEO=$(cat "$file" | grep -oP '(?<=SEO</th><td class="numeric">)\d+')
+
+            echo "| $RELATIVE_PATH | $PERFORMANCE | $ACCESSIBILITY | $BEST_PRACTICES | $SEO |" >> summary.md
+          done
+
+          gh pr comment ${{ github.event.pull_request.number }} --body "$(cat summary.md)"
 
       - name: Stop local server
         if: always()
