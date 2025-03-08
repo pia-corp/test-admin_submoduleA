@@ -39,7 +39,9 @@ jobs:
           # 各HTMLページに対してLighthouseを実行
           for url in $URLS; do
             BASENAME=$(basename "$url" .html)  # URLからページ名（例: index, about）を取得
-            lighthouse "$url" --quiet --chrome-flags="--headless --disable-device-emulation --no-sandbox" --output=json --output-path="lighthouse-results/$BASENAME.json" --throttling-method=provided --disable-network-throttling
+            # URLのディレクトリ構造も含めたファイル名を作成
+            FILE_PATH="lighthouse-results/$(echo $url | sed 's|http://localhost:8080/||' | sed 's|/|_|g').json"
+            lighthouse "$url" --quiet --chrome-flags="--headless --disable-device-emulation --no-sandbox" --output=json --output-path="$FILE_PATH" --throttling-method=provided --disable-network-throttling
           done
 
       - name: Generate Summary
@@ -47,8 +49,8 @@ jobs:
           REPORTS_DIR="lighthouse-results"
           JSON_FILES=$(find $REPORTS_DIR -name "*.json")
 
-          echo "| File name | Performance | Accessibility | Best practices | SEO |" > summary.md
-          echo "| --------- | ----------- | ------------- | -------------- | --- |" >> summary.md
+          echo "| File name | Performance | Accessibility | Best practices | SEO | URL |" > summary.md
+          echo "| --------- | ----------- | ------------- | -------------- | --- | --- |" >> summary.md
 
           for file in $JSON_FILES; do
             RELATIVE_PATH=$(basename "$file" .json)  # ページ名をファイル名から取得
@@ -56,8 +58,17 @@ jobs:
             ACCESSIBILITY=$(jq '.categories.accessibility.score * 100' "$file")
             BEST_PRACTICES=$(jq '.categories."best-practices".score * 100' "$file")
             SEO=$(jq '.categories.seo.score * 100' "$file")
+            # URLをレポートに追加
+            URL="http://localhost:8080/$(echo $RELATIVE_PATH | sed 's|_|/|g').html"
 
-            echo "| $RELATIVE_PATH | $PERFORMANCE | $ACCESSIBILITY | $BEST_PRACTICES | $SEO |" >> summary.md
+            echo "| $RELATIVE_PATH | $PERFORMANCE | $ACCESSIBILITY | $BEST_PRACTICES | $SEO | $URL |" >> summary.md
+          done
+
+      - name: Upload reports to storage
+        run: |
+          # レポートをGitHubにアップロード（またはストレージに保存）
+          for file in lighthouse-results/*.json; do
+            gh release upload ${{ github.event.repository.name }} "$(basename $file)" "$file" --clobber
           done
 
       - name: Post Lighthouse report to PR
