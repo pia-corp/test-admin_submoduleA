@@ -48,7 +48,7 @@ jobs:
             let message = "";
             for (let key in errorsArray) {
               message += `| ${key} | ${errorsArray[key]} |\n`;
-              for (const i = 0, let = errorsArray[key].length; i < len; i++) {
+              for (let i = 0, len = errorsArray[key].length; i < len; i++) {
                 message += `| ${key} | ${errorsArray[key][i]} |\n`;
               }
             }
