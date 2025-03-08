@@ -21,16 +21,8 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Run HTMLHint
-        run: npx htmlhint public/**/*.html
-
-      - name: Run Stylelint
-        run: npx stylelint "public/assets/css/**/*.css"
-
-      - name: Run ESLint
-        run: npx eslint public/assets/js/**/*.js
-
-
+      - name: Lint and rewrite markup
+        run: npm run linter
 # jobs:
 #   check_links:
 #     runs-on: ubuntu-latest
