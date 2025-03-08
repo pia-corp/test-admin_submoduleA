@@ -18,116 +18,29 @@ jobs:
         with:
           node-version: 'latest'
 
-      - name: Install dependencies
+      - name: Run Lighthouse
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          configPath: './.github/config/.lighthouserc.json'
+          budgetPath: ./.github/config/.budget.json
+          temporaryPublicStorage: true
+
+      - name: Post Lighthouse report to PR
         run: |
-          npm install -g @lhci/cli@0.11.x serve
-          npm outdated
-          npm update
-          npm fund
-          sudo apt-get update
-          sudo apt-get install -y jq
+          REPORTS_DIR="lighthouse-results"
+          HTML_FILES=$(find $REPORTS_DIR -name "*.html")
 
-      - name: Start local server
-        run: |
-          npx serve public -l 8080 &
-          # Save the PID to kill the server later
-          echo $! > .server-pid
-          # Wait for server to start
-          sleep 5
+          echo "| File name | Performance | Accessibility | Best practices | SEO |" > summary.md
+          echo "| --------- | ----------- | ------------- | -------------- | --- |" >> summary.md
 
-      - name: Run Lighthouse audit
-        id: lighthouse
-        run: |
-          REPORTS_DIR="lighthouse-reports"
-          mkdir -p $REPORTS_DIR
-
-          # Find all HTML files in the public folder
-          HTML_FILES=$(find public -name "*.html")
-
-          # Initialize the markdown table
-          echo "| File name | Performance | Accessibility | Best practices | SEO |" > $REPORTS_DIR/summary.md
-          echo "| --------- | ----------- | ------------- | -------------- | --- |" >> $REPORTS_DIR/summary.md
-
-          # Process each HTML file
           for file in $HTML_FILES; do
-            # Get relative path to display in report
-            RELATIVE_PATH=$(echo $file | sed 's|^public/||')
+            RELATIVE_PATH=$(basename "$file")
+            PERFORMANCE=$(cat "$file" | grep -oP '(?<=Performance</th><td class="numeric">)\d+')
+            ACCESSIBILITY=$(cat "$file" | grep -oP '(?<=Accessibility</th><td class="numeric">)\d+')
+            BEST_PRACTICES=$(cat "$file" | grep -oP '(?<=Best Practices</th><td class="numeric">)\d+')
+            SEO=$(cat "$file" | grep -oP '(?<=SEO</th><td class="numeric">)\d+')
 
-            # Create a unique report directory for each file
-            FILENAME=$(basename "$file" .html)
-            FILE_REPORT_DIR="$REPORTS_DIR/$FILENAME"
-            mkdir -p "$FILE_REPORT_DIR"
-
-            # Create a simple config file for lighthouse
-            echo '{
-              "ci": {
-                "collect": {
-                  "settings": {
-                    "preset": "desktop"
-                  }
-                }
-              }
-            }' > lhci-config.json
-
-            # Run Lighthouse directly with npx
-            URL="http://localhost:8080/$(echo $file | sed 's|^public/||')"
-            echo "Running Lighthouse on $URL"
-            npx lighthouse@12.4.0 "$URL" --chrome-flags="--headless --no-sandbox --disable-gpu" --disable-storage-reset --output=json --output-path="$FILE_REPORT_DIR/report.json"
-
-            if [ -f "$FILE_REPORT_DIR/report.json" ]; then
-              # Extract scores using jq
-              PERFORMANCE=$(cat "$FILE_REPORT_DIR/report.json" | jq -r '.categories.performance.score * 100' | xargs printf "%.0f")
-              ACCESSIBILITY=$(cat "$FILE_REPORT_DIR/report.json" | jq -r '.categories.accessibility.score * 100' | xargs printf "%.0f")
-              BEST_PRACTICES=$(cat "$FILE_REPORT_DIR/report.json" | jq -r '.categories["best-practices"].score * 100' | xargs printf "%.0f")
-              SEO=$(cat "$FILE_REPORT_DIR/report.json" | jq -r '.categories.seo.score * 100' | xargs printf "%.0f")
-
-              # Print scores for debugging
-              echo "Scores for $RELATIVE_PATH:"
-              echo "  Performance: $PERFORMANCE"
-              echo "  Accessibility: $ACCESSIBILITY"
-              echo "  Best Practices: $BEST_PRACTICES"
-              echo "  SEO: $SEO"
-
-              # Add to markdown table
-              echo "| $RELATIVE_PATH | $PERFORMANCE | $ACCESSIBILITY | $BEST_PRACTICES | $SEO |" >> $REPORTS_DIR/summary.md
-            else
-              echo "Error: Report not generated for $RELATIVE_PATH"
-              echo "| $RELATIVE_PATH | Error | Error | Error | Error |" >> $REPORTS_DIR/summary.md
-            fi
+            echo "| $RELATIVE_PATH | $PERFORMANCE | $ACCESSIBILITY | $BEST_PRACTICES | $SEO |" >> summary.md
           done
 
-          # Save the markdown content to a variable for the PR comment
-          SUMMARY_CONTENT=$(cat $REPORTS_DIR/summary.md)
-          echo "summary<<EOF" >> $GITHUB_ENV
-          echo "$SUMMARY_CONTENT" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
-
-      - name: Upload Lighthouse reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: lighthouse-reports
-          path: lighthouse-reports
-
-      - name: Kill server
-        if: always()
-        run: |
-          if [ -f .server-pid ]; then
-            kill $(cat .server-pid) || true
-          fi
-
-      - name: Comment on PR
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs');
-
-            const summary = process.env.summary;
-
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `## 📊 Lighthouse Audit Results\n\n${summary}\n\n_This comment was automatically generated from Lighthouse audit on \`public\` folder HTML files._`
-            });
+          gh pr comment ${{ github.event.pull_request.number }} --body "$(cat summary.md)"
