@@ -44,5 +44,5 @@ jobs:
           # 各HTMLページに対してLighthouseを実行
           for url in $URLS; do
             BASENAME=$(basename "$url" .html)  # URLからページ名（例: index, about）を取得
-            lighthouse "$url"--view --quiet --chrome-flags="--headless"
+            lighthouse "$url" --view --quiet --chrome-flags="--headless"
           done
