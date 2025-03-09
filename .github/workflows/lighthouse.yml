@@ -28,7 +28,6 @@ jobs:
         with:
           urls: |
             "http://localhost:38533/company.html",
-          configPath: ./.github/config/.lighthouserc.json
           temporaryPublicStorage: true
         continue-on-error: true
 
