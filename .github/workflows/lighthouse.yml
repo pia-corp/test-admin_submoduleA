@@ -32,6 +32,12 @@ jobs:
           npm install -g lighthouse
           sudo apt-get install jq
 
+      - name: Start local server
+        run: |
+          npx serve -s public -l 8080 &
+          echo $! > .server-pid
+          sleep 10
+
       - name: Run Lighthouse
         run: |
           mkdir -p lighthouse-results
