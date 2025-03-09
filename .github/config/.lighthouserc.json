@@ -1,11 +1,11 @@
 {
   "ci": {
-    "collect": {
-      "url": ["http://localhost:8080"],
-      "numberOfRuns": 1,
-      "settings": {
-        "preset": "desktop"
-      }
+    "staticDistDir": "./public/",
+    "numberOfRuns": 1,
+    "maxAutodiscoverUrls": 0,
+    "settings": {
+      "preset": "desktop",
+      "locale": "ja"
     },
     "assert": {
       "assertions": {
