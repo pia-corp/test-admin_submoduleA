@@ -33,6 +33,7 @@ jobs:
           PORT=38533
           BASE_URL="http://localhost:$PORT"
           FILES=()
+          URLS_STRING="" # URLS_STRING を初期化
           # 変更されたファイルのうち .html のみを抽出
           for file in $CHANGED_FILES; do
             if [[ $file == *.html ]]; then
@@ -40,31 +41,32 @@ jobs:
               RELATIVE_FILE_PATH=$(echo "$file" | sed 's|^public/||')
               # publicディレクトリ内にファイルが存在するか確認 (念のため)
               if [[ -f "public/$RELATIVE_FILE_PATH" ]]; then
-                FILES+=("\"$BASE_URL/$RELATIVE_FILE_PATH\"")
+                FILES+=("$BASE_URL/$RELATIVE_FILE_PATH") # 引用符なしでURLを格納
               else
                 echo "warn: publicディレクトリ内にファイルが存在しません: $file" # 警告ログ
               fi
             fi
           done
           echo "抽出されたHTMLファイルリスト: ${FILES[@]}" # ログ出力
-          # JSON 配列に変換
-          JSON_FILES=$(printf ",%s" "${FILES[@]}")
-          JSON_FILES="[${JSON_FILES:1}]"
-          echo "Lighthouse監査対象URLリスト (JSON): $JSON_FILES" # ログ出力
 
-          # JSON 配列を改行で結合 (改行コードをエスケープ)
-          URLS_STRING=$(echo "$JSON_FILES" | sed 's/\\n/\\\\n/g' | sed 's/\\r/\\\\r/g')  # 改行コードをエスケープ
-          echo "urls=$URLS_STRING" >> $GITHUB_ENV
+          # URLS_STRING を改行区切りで生成
+          if [[ ${#FILES[@]} -gt 0 ]]; then
+            DELIMITER=$'\n'
+            URLS_STRING=$(IFS="$DELIMITER"; echo "${FILES[*]}")
+          fi
+
+          echo "Lighthouse監査対象URLリスト (改行区切り文字列): \"$URLS_STRING\"" # ログ出力
+          echo "urls=\"$URLS_STRING\"" >> $GITHUB_ENV # urls を改行区切り文字列として設定
       - name: Start the server
         run: |
           npx http-server ./public -p 38533 &  # http-serverをバックグラウンドで起動
           sleep 5  # サーバーが起動するまで待機
-      - name: Run Lighthouse against changed files
+      - name: Audit URLs using Lighthouse
         if: env.urls != '[]'
         id: lighthouse_audit
         uses: treosh/lighthouse-ci-action@v12
         with:
-          urls: ${{ fromJSON(env.urls) }} # fromJSON() で JSON 配列として解釈
+          urls: ${{ env.urls }} # fromJSON() を削除 - 改行区切り文字列を直接渡す
           temporaryPublicStorage: true
         continue-on-error: true
       - name: Comment on PR with Lighthouse results
