@@ -33,18 +33,20 @@ jobs:
           filtered_files=()
           for file in "${changed_files[@]}"; do
             if [[ "$file" == *.html ]]; then
-              filtered_files+=("$file")
+              filtered_files+=("\"$file\"")
             fi
           done
-          echo "files=${filtered_files[@]}" >> $GITHUB_ENV
+          json_files=$(printf ",%s" "${filtered_files[@]}")
+          json_files="[${json_files:1}]"  # JSON配列形式に変換
+          echo "files=$json_files" >> $GITHUB_ENV
 
       - name: Run Lighthouse for changed files
-        if: env.files != ''
+        if: env.files != '[]'
         id: lighthouse_audit
         uses: treosh/lighthouse-ci-action@v12
         with:
           configPath: ./.github/config/.lighthouserc.json
-          urls: ${{ join(fromJSON(env.files), ' ') }}
+          urls: ${{ fromJSON(env.files) }}
           budgetPath: ./.github/config/.budget.json
           temporaryPublicStorage: true
         continue-on-error: true
