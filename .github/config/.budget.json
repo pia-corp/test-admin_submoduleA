@@ -1,16 +1,29 @@
-{
-  "resourceSizes": [
-    {
-      "resourceType": "script",
-      "budget": 125
-    },
-    {
-      "resourceType": "image",
-      "budget": 300
-    },
-    {
-      "resourceType": "stylesheet",
-      "budget": 50
-    }
-  ]
-}
+[
+  {
+    "path": "/",
+    "timings": [
+      {
+        "metric": "interactive",
+        "budget": 6000
+      },
+      {
+        "metric": "first-meaningful-paint",
+        "budget": 4000
+      }
+    ],
+    "resourceSizes": [
+      {
+        "resourceType": "image",
+        "budget": 4000
+      },
+      {
+        "resourceType": "script",
+        "budget": 1000
+      },
+      {
+        "resourceType": "total",
+        "budget": 6000
+      }
+    ]
+  }
+]

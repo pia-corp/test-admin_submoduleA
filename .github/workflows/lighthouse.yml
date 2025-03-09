@@ -26,7 +26,8 @@ jobs:
         id: lighthouse_audit
         uses: treosh/lighthouse-ci-action@v12
         with:
-          configPath: './.github/config/.lighthouserc.json'
+          configPath: ./.github/config/.lighthouserc.json
+          budgetPath: ./.github/config/.budget.json
           temporaryPublicStorage: true
         continue-on-error: true
 
