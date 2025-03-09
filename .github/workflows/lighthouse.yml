@@ -34,7 +34,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-artifacts
-          path: ./dist
+          path: ./public
         continue-on-error: true
 
       # アーティファクトが見つからない場合のフォールバック（ビルドステップの例）
