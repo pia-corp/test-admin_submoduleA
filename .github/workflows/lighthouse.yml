@@ -50,5 +50,12 @@ jobs:
           # 各HTMLページに対してLighthouseを実行
           for url in $URLS; do
             BASENAME=$(basename "$url" .html)  # URLからページ名（例: index, about）を取得
-            lighthouse "$url" --view --quiet --chrome-flags="--headless"
+            lighthouse "$url" --view --quiet --chrome-flags="--headless --output=json --output-path="lighthouse-results/$BASENAME.json --disable-network-throttling --throttling-method=provided"
           done
+
+      - name: Generate Summary
+        run: |
+          REPORTS_DIR="lighthouse-results"
+          JSON_FILES=$(find $REPORTS_DIR -name "*.json")
+
+          echo "${JSON_FILES}"
