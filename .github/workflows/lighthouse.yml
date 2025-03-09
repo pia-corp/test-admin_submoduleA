@@ -1,97 +1,99 @@
-name: Lighthouse Audit
+name: Lighthouse CI
 
 on:
   pull_request:
     branches:
       - main
-    types: [opened, edited, reopened, synchronize]
 
 jobs:
-  Lighthouse:
-    name: Lighthouse-CI
+  lighthouse:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
-    permissions:
-      contents: read
-      issues: write
-      pull-requests: write
 
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4.2.2
-        with:
-          ref: ${{ github.head_ref || github.ref_name }}
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4.2.0
+        uses: actions/setup-node@v3
         with:
-          node-version: 'latest'
-
-      - name: Install dependencies
-        run: |
-          npm install -g lighthouse
-          sudo apt-get install jq
+          node-version: 18
 
       - name: Start local server
         run: |
-          npx serve public -l 38533 &
+          npx serve -s public -l 38533 &
           echo $! > .server-pid
           sleep 5
 
-      - name: Run Lighthouse
-        run: |
-          mkdir -p lighthouse-results
-
-      - name: Get changed HTML files from main (URL修正)
+      - name: Get changed HTML files from main
         id: filter_html
         run: |
-          git fetch origin main  # mainブランチを取得
-          CHANGED_FILES=$(git diff --name-only origin/main -- "public/*.html")  # public/ 内の .html の差分のみ取得
+          git fetch origin main
+          CHANGED_FILES=$(git diff --name-only origin/main -- "public/*.html")
           PORT=38533
           BASE_URL="http://localhost:$PORT"
           FILES=()
 
-          # 変更されたファイルのうち public/ 内の .html のみを抽出
           for file in $CHANGED_FILES; do
-            RELATIVE_FILE_PATH=$(echo "$file" | sed 's|^public/||' | sed 's/\.html$//') # public/ のプレフィックスと .html を削除
-            FILES+=("\"$BASE_URL/$RELATIVE_FILE_PATH\"") # 拡張子なしのURLを使用
+            RELATIVE_FILE_PATH=$(echo "$file" | sed 's|^public/||' | sed 's/\.html$//')
+            FILES+=("\"$BASE_URL/$RELATIVE_FILE_PATH\"")
           done
 
-          # JSON 配列に変換
           JSON_FILES=$(printf ",%s" "${FILES[@]}")
           JSON_FILES="[${JSON_FILES:1}]"
 
           echo "urls=$JSON_FILES" >> $GITHUB_ENV
           echo "Changed files: ${CHANGED_FILES}"
 
-      - name: Run Lighthouse against a static dist dir
+      - name: Run Lighthouse on changed files
+        id: lighthouse
         run: |
-          # publicディレクトリ内のHTMLファイルを自動でリストアップ (URL修正)
-          URLS=$(find public -name "*.html" | sed 's|public/||' | sed 's/\.html$//' | sed 's|^|http://localhost:38533/|') # .html を削除
+          mkdir -p lhci_reports
+          REPORTS=()
+          SCORE_TABLE="| File Name | Performance | Accessibility | Best Practices | SEO | Report URL |\n|---|---|---|---|---|---|"
 
-          # 各HTMLページに対してLighthouseを実行
-          for url in $URLS; do
-            BASENAME=$(basename "$url") # URLからページ名（例: index, company）を取得 (拡張子なし)
-            lighthouse "$url" --quiet --chrome-flags="--headless" --output=json,html --output-path=lighthouse-results/$BASENAME.json --throttling-method=provided --no-sandbox --disable-dev-shm-usage
+          for url in $(echo $urls | jq -r '.[]'); do
+            FILENAME=$(basename "$url")
+            REPORT_FILE="lhci_reports/${FILENAME}.json"
+            HTML_REPORT="lhci_reports/${FILENAME}.html"
+
+            # Run Lighthouse
+            npx lighthouse "$url" --quiet --output=json --output=html --chrome-flags="--headless" --output-path="$REPORT_FILE"
+
+            # Extract scores
+            PERFORMANCE=$(jq '.categories.performance.score * 100' "$REPORT_FILE")
+            ACCESSIBILITY=$(jq '.categories.accessibility.score * 100' "$REPORT_FILE")
+            BEST_PRACTICES=$(jq '.categories."best-practices".score * 100' "$REPORT_FILE")
+            SEO=$(jq '.categories.seo.score * 100' "$REPORT_FILE")
+
+            # Generate Report URL
+            REPORT_URL="https://storage.googleapis.com/$GCS_BUCKET/lighthouse/${FILENAME}.html"
+            REPORTS+=("$HTML_REPORT")
+
+            # Add row to table
+            SCORE_TABLE+="\n| $FILENAME | $PERFORMANCE | $ACCESSIBILITY | $BEST_PRACTICES | $SEO | [View Report]($REPORT_URL) |"
           done
 
-      - name: Generate Summary (JSONファイル内容出力)
+          echo "score_table<<EOF" >> $GITHUB_ENV
+          echo "$SCORE_TABLE" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Upload Lighthouse reports to GCP
+        env:
+          GCS_BUCKET: your-gcs-bucket
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
         run: |
-          REPORTS_DIR="lighthouse-results"
-          JSON_FILES=$(find $REPORTS_DIR -name "*.json")
+          echo "$GOOGLE_APPLICATION_CREDENTIALS" > gcp-key.json
+          gcloud auth activate-service-account --key-file=gcp-key.json
+          gsutil -m cp -r lhci_reports/*.html gs://$GCS_BUCKET/lighthouse/
 
-          echo "JSONファイルリスト: ${JSON_FILES}"
-          echo "==="
-
-          for file in $JSON_FILES; do
-            echo "ファイル名: $file"
-            cat "$file" # JSONファイルの中身を標準出力に出力
-            echo "---"
-          done
+      - name: Comment on PR with Lighthouse results
+        uses: thollander/actions-comment-on-pr@v1
+        with:
+          message: |
+            ## Lighthouse Report Results
+            ${{ env.score_table }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Stop local server
-        if: always()
         run: |
-          if [ -f .server-pid ]; then
-            kill $(cat .server-pid) || true
-          fi
+          kill $(cat .server-pid)
