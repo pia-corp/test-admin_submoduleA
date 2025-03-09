@@ -34,7 +34,7 @@ jobs:
 
       - name: Start local server
         run: |
-          npx serve -s public -l 38533 &
+          npx serve public -l 38533 &
           echo $! > .server-pid
           sleep 5
 
@@ -46,18 +46,15 @@ jobs:
         id: filter_html
         run: |
           git fetch origin main  # mainブランチを取得
-          CHANGED_FILES=$(git diff --name-only origin/main)  # mainとの差分を取得
+          CHANGED_FILES=$(git diff --name-only origin/main -- "public/*.html")  # public/ 内の .html の差分のみ取得
           PORT=38533
           BASE_URL="http://localhost:$PORT"
           FILES=()
 
-          # 変更されたファイルのうち .html のみを抽出
+          # 変更されたファイルのうち public/ 内の .html のみを抽出
           for file in $CHANGED_FILES; do
-            if [[ $file == *.html ]]; then
-              # URL生成時に .html を削除
-              RELATIVE_FILE_PATH=$(echo "$file" | sed 's|^public/||' | sed 's/\.html$//') # .html を削除
-              FILES+=("\"$BASE_URL/$RELATIVE_FILE_PATH\"") # 拡張子なしのURLを使用
-            fi
+            RELATIVE_FILE_PATH=$(echo "$file" | sed 's|^public/||' | sed 's/\.html$//') # public/ のプレフィックスと .html を削除
+            FILES+=("\"$BASE_URL/$RELATIVE_FILE_PATH\"") # 拡張子なしのURLを使用
           done
 
           # JSON 配列に変換
@@ -65,27 +62,18 @@ jobs:
           JSON_FILES="[${JSON_FILES:1}]"
 
           echo "urls=$JSON_FILES" >> $GITHUB_ENV
-          echo "${CHANGED_FILES}"
+          echo "Changed files: ${CHANGED_FILES}"
 
       - name: Run Lighthouse against a static dist dir
-        id: lighthouse_audit # ID を追加
-        uses: treosh/lighthouse-ci-action@v12
-        with:
-          urls: ${{ env.urls }}
-          temporaryPublicStorage: true
-        continue-on-error: true
-
-      - name: Output Lighthouse Report URLs # 新しいステップを追加
-        if: steps.lighthouse_audit.outputs.reportUrls
         run: |
-          echo "Lighthouse レポートURL:"
-          echo "${{ steps.lighthouse_audit.outputs.reportUrls }}"
-          echo ""
-          echo "各レポートへのURL (一時公開ストレージ):"
-          echo "-----------------------------------------"
-          JSON_URLS=$(echo '${{ steps.lighthouse_audit.outputs.reportUrls }}' | jq -r '.') # JSON 文字列を jq で整形
-          echo "$JSON_URLS"
-          echo "-----------------------------------------"
+          # publicディレクトリ内のHTMLファイルを自動でリストアップ (URL修正)
+          URLS=$(find public -name "*.html" | sed 's|public/||' | sed 's/\.html$//' | sed 's|^|http://localhost:38533/|') # .html を削除
+
+          # 各HTMLページに対してLighthouseを実行
+          for url in $URLS; do
+            BASENAME=$(basename "$url") # URLからページ名（例: index, company）を取得 (拡張子なし)
+            lighthouse "$url" --quiet --chrome-flags="--headless" --output=json,html --output-path=lighthouse-results/$BASENAME.json --throttling-method=provided --no-sandbox --disable-dev-shm-usage
+          done
 
       - name: Generate Summary (JSONファイル内容出力)
         run: |
