@@ -63,6 +63,7 @@ jobs:
           JSON_FILES="[${JSON_FILES:1}]"
 
           echo "urls=$JSON_FILES" >> $GITHUB_ENV
+          echo "${CHANGED_FILES}"
 
       - name: Run Lighthouse against a static dist dir
         run: |
@@ -81,4 +82,24 @@ jobs:
           JSON_FILES=$(find $REPORTS_DIR -name "*.json")
 
           echo "${JSON_FILES}"
-          echo "${lighthouse-results/company.json}"
+          echo "==="
+
+
+          for file in $JSON_FILES; do
+            echo "$file"
+            # RELATIVE_PATH=$(basename "$file" .json)  # ページ名をファイル名から取得
+            # PERFORMANCE=$(jq '.categories.performance.score * 100' "$file")
+            # ACCESSIBILITY=$(jq '.categories.accessibility.score * 100' "$file")
+            # BEST_PRACTICES=$(jq '.categories."best-practices".score * 100' "$file")
+            # SEO=$(jq '.categories.seo.score * 100' "$file")
+
+            # echo "| $RELATIVE_PATH | $PERFORMANCE | $ACCESSIBILITY | $BEST_PRACTICES | $SEO |" >> summary.md
+          done
+
+
+      - name: Stop local server
+        if: always()
+        run: |
+          if [ -f .server-pid ]; then
+            kill $(cat .server-pid) || true
+          fi
