@@ -2,9 +2,8 @@
   "ci": {
     "collect": {
 			"staticDistDir": "./public/",
-			"numberOfRuns": 1,
+			"numberOfRuns": 2,
       "settings": {
-        "preset": "desktop",
         "onlyCategories": ["performance", "accessibility", "best-practices", "seo"]
       }
     },
