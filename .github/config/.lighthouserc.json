@@ -1,10 +1,12 @@
 {
   "ci": {
-    "staticDistDir": "./public/",
-    "numberOfRuns": 1,
-    "settings": {
-      "preset": "desktop",
-      "locale": "ja"
+    "collect": {
+			"staticDistDir": "./public/",
+			"numberOfRuns": 1,
+      "maxAutodiscoverUrls": 0,
+      "settings": {
+        "locale": "ja"
+      }
     },
     "assert": {
       "assertions": {
