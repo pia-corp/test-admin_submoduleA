@@ -1,5 +1,6 @@
 {
   "ci": {
+    "url": "http://localhost:38533",
     "collect": {
 			"staticDistDir": "./public/",
 			"numberOfRuns": 2,
