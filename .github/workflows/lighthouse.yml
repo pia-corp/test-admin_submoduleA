@@ -32,7 +32,7 @@ jobs:
 
       - name: Start the server
         run: |
-          npx http-server ./public &  # http-serverをバックグラウンドで起動
+          npx http-server ./public -p 38533 &  # http-serverをバックグラウンドで起動
           sleep 5  # サーバーが起動するまで待機
 
       - name: Run Lighthouse against a static dist dir
