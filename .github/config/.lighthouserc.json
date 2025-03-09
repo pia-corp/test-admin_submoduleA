@@ -2,7 +2,6 @@
   "ci": {
     "staticDistDir": "./public/",
     "numberOfRuns": 1,
-    "maxAutodiscoverUrls": 0,
     "settings": {
       "preset": "desktop",
       "locale": "ja"
