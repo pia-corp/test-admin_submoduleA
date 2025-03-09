@@ -87,7 +87,7 @@ jobs:
           gsutil -m cp -r lhci_reports/*.html gs://$GCS_BUCKET/lighthouse/
 
       - name: Comment on PR with Lighthouse results
-        uses: thollander/actions-comment-on-pr@v1
+        uses: thollander/actions-comment-pull-request@v3
         with:
           message: |
             ## Lighthouse Report Results
