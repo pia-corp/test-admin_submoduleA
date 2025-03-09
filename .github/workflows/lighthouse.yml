@@ -1,11 +1,9 @@
 name: Lighthouse Audit
-
 on:
   pull_request:
     branches:
       - main
     types: [opened, edited, reopened, synchronize]
-
 jobs:
   Lighthouse:
     name: Lighthouse-CI
@@ -15,48 +13,49 @@ jobs:
       contents: read
       issues: write
       pull-requests: write
-
     steps:
       - name: Check out repository
         uses: actions/checkout@v4.2.2
         with:
           fetch-depth: 0  # 差分を取得するために履歴をすべて取得
-
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 'latest'
-
       - name: Install dependencies
         run: npm install
-
       - name: Get changed HTML files from main
         id: filter_html
         run: |
           git fetch origin main  # mainブランチを取得
           CHANGED_FILES=$(git diff --name-only origin/main)  # mainとの差分を取得
+          echo "差分ファイルリスト: $CHANGED_FILES" # ログ出力
           PORT=38533
           BASE_URL="http://localhost:$PORT"
           FILES=()
-
           # 変更されたファイルのうち .html のみを抽出
           for file in $CHANGED_FILES; do
             if [[ $file == *.html ]]; then
-              FILES+=("\"$BASE_URL/$file\"")
+              # publicディレクトリからの相対パスに変換 (public/ を削除)
+              RELATIVE_FILE_PATH=$(echo "$file" | sed 's|^public/||')
+              # publicディレクトリ内にファイルが存在するか確認 (念のため)
+              if [[ -f "public/$RELATIVE_FILE_PATH" ]]; then
+                FILES+=("\"$BASE_URL/$RELATIVE_FILE_PATH\"")
+              else
+                echo "warn: publicディレクトリ内にファイルが存在しません: $file" # 警告ログ
+              fi
             fi
           done
-
+          echo "抽出されたHTMLファイルリスト: ${FILES[@]}" # ログ出力
           # JSON 配列に変換
           JSON_FILES=$(printf ",%s" "${FILES[@]}")
           JSON_FILES="[${JSON_FILES:1}]"
-
+          echo "Lighthouse監査対象URLリスト: $JSON_FILES" # ログ出力
           echo "urls=$JSON_FILES" >> $GITHUB_ENV
-
       - name: Start the server
         run: |
           npx http-server ./public -p 38533 &  # http-serverをバックグラウンドで起動
           sleep 5  # サーバーが起動するまで待機
-
       - name: Run Lighthouse against changed files
         if: env.urls != '[]'
         id: lighthouse_audit
@@ -65,7 +64,6 @@ jobs:
           urls: ${{ fromJSON(env.urls) }}
           temporaryPublicStorage: true
         continue-on-error: true
-
       - name: Comment on PR with Lighthouse results
         id: format_lighthouse_score
         uses: actions/github-script@v7.0.1
@@ -75,31 +73,25 @@ jobs:
             const urls = ${{ steps.lighthouse_audit.outputs.links }};
             const assertions =${{ steps.lighthouse_audit.outputs.assertionResults }};
             const manifest = ${{ steps.lighthouse_audit.outputs.manifest }};
-
             console.log(urls);
             console.log(assertions);
             console.log(manifest);
-
             // JSONからURLとスコア情報を抽出
             const scoreData = [];
-
             // マニフェストからURLごとのデバイス情報とスコアを取得
             for (const item of manifest) {
               const urlKey = item.url;
               const deviceType = item.isDesktop ? 'Desktop' : 'Mobile';
               const reportUrl = urls[urlKey];
-
               // ファイル名を取得（URLからパスのみを抽出）
               const parsedUrl = new URL(urlKey);
               const fileName = parsedUrl.pathname === '/' ? 'index.html' : parsedUrl.pathname.split('/').pop();
-
               // 各カテゴリのスコアを取得 (summaryから直接取得)
               if (item.summary) {
                 const performance = Math.round(item.summary.performance * 100);
                 const accessibility = Math.round(item.summary.accessibility * 100);
                 const bestPractices = Math.round(item.summary['best-practices'] * 100);
                 const seo = Math.round(item.summary.seo * 100);
-
                 scoreData.push({
                   fileName,
                   device: deviceType,
@@ -111,12 +103,10 @@ jobs:
                 });
               }
             }
-
             // マークダウンテーブルの作成
             let markdownTable = '## 🔍 Lighthouse 監査結果\n\n';
             markdownTable += '| File name | Device | Performance | Accessibility | Best Practices | SEO | Report URL |\n';
             markdownTable += '| --------- | ------ | ----------- | ------------- | -------------- | --- | ---------- |\n';
-
             for (const data of scoreData) {
               // スコアに基づいて絵文字を追加
               const getEmojiForScore = (score) => {
@@ -125,26 +115,21 @@ jobs:
                 if (score >= 50) return '🟠';
                 return '🔴';
               };
-
               markdownTable += `| ${data.fileName} | ${data.device} | ${getEmojiForScore(data.performance)} ${data.performance} | ${getEmojiForScore(data.accessibility)} ${data.accessibility} | ${getEmojiForScore(data.bestPractices)} ${data.bestPractices} | ${getEmojiForScore(data.seo)} ${data.seo} | [詳細](${data.reportUrl}) |\n`;
             }
-
             // 概要説明を追加
             markdownTable += '\n### スコア評価\n';
             markdownTable += '- 🟢 90-100: 良好\n';
             markdownTable += '- 🟠 50-89: 改善推奨\n';
             markdownTable += '- 🔴 0-49: 要修正\n';
-
             // PRにコメントを投稿
             const prNumber = context.payload.pull_request.number;
             const owner = context.repo.owner;
             const repo = context.repo.repo;
-
             await github.rest.issues.createComment({
               owner,
               repo,
               issue_number: prNumber,
               body: markdownTable
             });
-
             console.log('Lighthouse監査結果をPRにコメントしました');
