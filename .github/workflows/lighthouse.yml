@@ -33,6 +33,7 @@ jobs:
           PORT=38533
           BASE_URL="http://localhost:$PORT"
           FILES=()
+          URLS_STRING="" # Initialize URLS_STRING as an empty string
           # 変更されたファイルのうち .html のみを抽出
           for file in $CHANGED_FILES; do
             if [[ $file == *.html ]]; then
@@ -40,18 +41,22 @@ jobs:
               RELATIVE_FILE_PATH=$(echo "$file" | sed 's|^public/||')
               # publicディレクトリ内にファイルが存在するか確認 (念のため)
               if [[ -f "public/$RELATIVE_FILE_PATH" ]]; then
-                FILES+=("\"$BASE_URL/$RELATIVE_FILE_PATH\"")
+                FILES+=("$BASE_URL/$RELATIVE_FILE_PATH") # Store URLs without quotes for multiline string
               else
                 echo "warn: publicディレクトリ内にファイルが存在しません: $file" # 警告ログ
               fi
             fi
           done
           echo "抽出されたHTMLファイルリスト: ${FILES[@]}" # ログ出力
-          # JSON 配列に変換
-          JSON_FILES=$(printf ",%s" "${FILES[@]}")
-          JSON_FILES="[${JSON_FILES:1}]"
-          echo "Lighthouse監査対象URLリスト: $JSON_FILES" # ログ出力
-          echo "urls=$JSON_FILES" >> $GITHUB_ENV
+
+          # Generate multiline string for URLs
+          if [[ ${#FILES[@]} -gt 0 ]]; then # Check if FILES array is not empty
+            DELIMITER=$'\n' # Define newline delimiter
+            URLS_STRING=$(IFS="$DELIMITER"; echo "${FILES[*]}") # Join array elements with newline
+          fi
+
+          echo "Lighthouse監査対象URLリスト (Multiline String): \"$URLS_STRING\"" # ログ出力 with quotes for clarity
+          echo "urls=\"$URLS_STRING\"" >> $GITHUB_ENV # Set urls as multiline string in GITHUB_ENV
       - name: Start the server
         run: |
           npx http-server ./public -p 38533 &  # http-serverをバックグラウンドで起動
