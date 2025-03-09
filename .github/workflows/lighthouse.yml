@@ -22,6 +22,19 @@ jobs:
         with:
           ref: ${{ github.head_ref || github.ref_name }}
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'latest'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Start the server
+        run: |
+          npx http-server ./public &  # http-serverをバックグラウンドで起動
+          sleep 5  # サーバーが起動するまで待機
+
       - name: Run Lighthouse against a static dist dir
         id: lighthouse_audit
         uses: treosh/lighthouse-ci-action@v12
