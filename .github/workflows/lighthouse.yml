@@ -41,9 +41,6 @@ jobs:
             const assertions =${{ steps.lighthouse_audit.outputs.assertionResults }};
             const manifest = ${{ steps.lighthouse_audit.outputs.manifest }};
 
-            console.log(assertions);
-            console.log(manifest);
-
             // JSONからURLとスコア情報を抽出
             const scoreData = [];
 
@@ -57,27 +54,23 @@ jobs:
               const parsedUrl = new URL(urlKey);
               const fileName = parsedUrl.pathname === '/' ? 'index.html' : parsedUrl.pathname.split('/').pop();
 
-              // 各カテゴリのスコアを検索
-              const scores = {};
-              const categories = ['performance', 'accessibility', 'best-practices', 'seo'];
+              // 各カテゴリのスコアを取得 (summaryから直接取得)
+              if (item.summary) {
+                const performance = Math.round(item.summary.performance * 100);
+                const accessibility = Math.round(item.summary.accessibility * 100);
+                const bestPractices = Math.round(item.summary['best-practices'] * 100);
+                const seo = Math.round(item.summary.seo * 100);
 
-              categories.forEach(category => {
-                const assertionKey = `${urlKey}-${category}`;
-                const score = assertions[assertionKey] ?
-                  Math.round(assertions[assertionKey].actual * 100) :
-                  'N/A';
-                scores[category] = score;
-              });
-
-              scoreData.push({
-                fileName,
-                device: deviceType,
-                performance: scores.performance,
-                accessibility: scores.accessibility,
-                bestPractices: scores['best-practices'],
-                seo: scores.seo,
-                reportUrl
-              });
+                scoreData.push({
+                  fileName,
+                  device: deviceType,
+                  performance,
+                  accessibility,
+                  bestPractices,
+                  seo,
+                  reportUrl
+                });
+              }
             }
 
             // マークダウンテーブルの作成
@@ -88,7 +81,7 @@ jobs:
             for (const data of scoreData) {
               // スコアに基づいて絵文字を追加
               const getEmojiForScore = (score) => {
-                if (score === 'N/A') return '⚪️';
+                if (score === undefined || score === null) return '⚪️';
                 if (score >= 90) return '🟢';
                 if (score >= 50) return '🟠';
                 return '🔴';
