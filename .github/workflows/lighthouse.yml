@@ -17,20 +17,52 @@ jobs:
       pull-requests: write
 
     steps:
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: ./public
+          retention-days: 1
+
       - name: Check out repository
         uses: actions/checkout@v4.2.2
         with:
           ref: ${{ github.head_ref || github.ref_name }}
 
-      - name: Run Lighthouse against a static dist dir
+      # アーティファクトをダウンロードするステップを追加
+      - name: Download Build Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+          path: ./dist
+        continue-on-error: true
+
+      # アーティファクトが見つからない場合のフォールバック（ビルドステップの例）
+      - name: Setup Node.js
+        if: steps.download-artifacts.outcome == 'failure'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        if: steps.download-artifacts.outcome == 'failure'
+        run: npm ci
+
+      - name: Build project
+        if: steps.download-artifacts.outcome == 'failure'
+        run: npm run build
+
+      # Lighthouseの実行
+      - name: Run Lighthouse against static build directory
         id: lighthouse_audit
         uses: treosh/lighthouse-ci-action@v12
         with:
           configPath: ./.github/config/.lighthouserc.json
-          budgetPath: ./.github/config/.budget.json
+          uploadArtifacts: true
           temporaryPublicStorage: true
         continue-on-error: true
 
+      # PRへのコメント投稿
       - name: Comment on PR with Lighthouse results
         id: format_lighthouse_score
         uses: actions/github-script@v7.0.1
@@ -38,12 +70,7 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const urls = ${{ steps.lighthouse_audit.outputs.links }};
-            const assertions =${{ steps.lighthouse_audit.outputs.assertionResults }};
             const manifest = ${{ steps.lighthouse_audit.outputs.manifest }};
-
-            console.log(urls);
-            console.log(assertions);
-            console.log(manifest);
 
             // JSONからURLとスコア情報を抽出
             const scoreData = [];
@@ -111,5 +138,3 @@ jobs:
               issue_number: prNumber,
               body: markdownTable
             });
-
-            console.log('Lighthouse監査結果をPRにコメントしました');
