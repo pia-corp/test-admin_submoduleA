@@ -41,6 +41,9 @@ jobs:
             const assertions =${{ steps.lighthouse_audit.outputs.assertionResults }};
             const manifest = ${{ steps.lighthouse_audit.outputs.manifest }};
 
+            console.log(assertions);
+            console.log(manifest);
+
             // JSONからURLとスコア情報を抽出
             const scoreData = [];
 
