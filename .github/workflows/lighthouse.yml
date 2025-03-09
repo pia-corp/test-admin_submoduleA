@@ -34,13 +34,35 @@ jobs:
 
       - name: Start local server
         run: |
-          npx serve -s public -l 8080 &
+          npx serve -s public -l 38533 &
           echo $! > .server-pid
-          sleep 10
+          sleep 5
 
       - name: Run Lighthouse
         run: |
           mkdir -p lighthouse-results
+
+      - name: Get changed HTML files from main
+        id: filter_html
+        run: |
+          git fetch origin main  # mainブランチを取得
+          CHANGED_FILES=$(git diff --name-only origin/main)  # mainとの差分を取得
+          PORT=38533
+          BASE_URL="http://localhost:$PORT"
+          FILES=()
+
+          # 変更されたファイルのうち .html のみを抽出
+          for file in $CHANGED_FILES; do
+            if [[ $file == *.html ]]; then
+              FILES+=("\"$BASE_URL/$file\"")
+            fi
+          done
+
+          # JSON 配列に変換
+          JSON_FILES=$(printf ",%s" "${FILES[@]}")
+          JSON_FILES="[${JSON_FILES:1}]"
+
+          echo "urls=$JSON_FILES" >> $GITHUB_ENV
 
       - name: Run Lighthouse against a static dist dir
         run: |
@@ -59,3 +81,4 @@ jobs:
           JSON_FILES=$(find $REPORTS_DIR -name "*.json")
 
           echo "${JSON_FILES}"
+          echo "${lighthouse-results/company.json}"
