@@ -20,7 +20,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4.2.2
         with:
-          ref: ${{ github.head_ref || github.ref_name }}
+          fetch-depth: 0  # 差分を取得するために履歴をすべて取得
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -30,14 +30,11 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Get changed files
-        id: changed_files
-        uses: tj-actions/changed-files@v44  # 変更されたファイルを取得
-
-      - name: Filter changed HTML files
+      - name: Get changed HTML files from main
         id: filter_html
         run: |
-          CHANGED_FILES="${{ steps.changed_files.outputs.all }}"
+          git fetch origin main  # mainブランチを取得
+          CHANGED_FILES=$(git diff --name-only origin/main)  # mainとの差分を取得
           PORT=38533
           BASE_URL="http://localhost:$PORT"
           FILES=()
