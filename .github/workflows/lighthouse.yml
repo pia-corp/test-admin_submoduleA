@@ -67,7 +67,7 @@ jobs:
       - name: Run Lighthouse against a static dist dir
         run: |
           # publicディレクトリ内のHTMLファイルを自動でリストアップ
-          URLS=$(find public -name "*.html" | sed 's|public/||' | sed 's|^|http://localhost:8080/|')
+          URLS=$(find public -name "*.html" | sed 's|public/||' | sed 's|^|http://localhost:38533/|')
 
           # 各HTMLページに対してLighthouseを実行
           for url in $URLS; do
