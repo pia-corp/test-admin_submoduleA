@@ -27,19 +27,19 @@ jobs:
         with:
           node-version: 20
 
-      - name: Generate URLs
-        id: urls
-        uses: actions/github-script@v6
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const globber = await glob.create('elements/*/demo/*.html');
-            const files = await globber.glob();
-            const urls = files
-              .map(x => x.match(/([\w-]+)/)[1])
-              .map(x => `${${{ env.DOMAIN }}}/components/${x}/demo/`)
-              .join('\n');
-            core.setOutput('urls', urls);
+      # - name: Generate URLs
+      #   id: urls
+      #   uses: actions/github-script@v7.0.1
+      #   with:
+      #     github-token: ${{ secrets.GITHUB_TOKEN }}
+      #     script: |
+      #       const globber = await glob.create('public/**/*.html');
+      #       const files = await globber.glob();
+      #       const urls = files
+      #         .map(x => x.match(/([\w-]+)/)[1])
+      #         .map(x => `${${{ env.DOMAIN }}}/components/${x}/demo/`)
+      #         .join('\n');
+      #       core.setOutput('urls', urls);
 
       - name: Run Lighthouse against a static dist dir
         id: lighthouse_audit
