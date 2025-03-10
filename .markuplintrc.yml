@@ -1,0 +1,44 @@
+{
+  "rules": {
+    "attr-duplication": true,
+    "attr-value-quotes": "double",
+    "case-sensitive-tag-name": "lower",
+    "character-reference": false,
+    "class-naming": false,
+    "deprecated-attr": false,
+    "deprecated-element": true,
+    "disallowed-element": [],
+    "doctype": "always",
+    "end-tag": true,
+    "heading-levels": false,
+    "id-duplication": true,
+    "ineffective-attr": false,
+    "invalid-attr": {
+      "options": {
+        "ignoreAttrNamePrefix": ["prefix", "charSet", "http-equiv", "property", "content"]
+      }
+    },
+    "label-has-control": false,
+    "landmark-roles": false,
+    "neighbor-popovers": false,
+    "no-boolean-attr-value": false,
+    "no-consecutive-br": false,
+    "no-default-value": false,
+    "no-duplicate-dt": true,
+    "no-empty-palpable-content": false,
+    "no-hard-code-id": false,
+    "no-orphaned-end-tag": true,
+    "no-refer-to-non-existent-id": true,
+    "no-use-event-handler-attr": false,
+    "permitted-contents": [],
+    "placeholder-label-option": false,
+    "require-accessible-name": false,
+    "require-datetime": true,
+    "required-attr": false,
+    "required-element": [],
+    "required-h1": false,
+    "use-list": false,
+    "wai-aria": false
+  },
+  "excludeFiles": ["./public/contact/index.html"]
+}

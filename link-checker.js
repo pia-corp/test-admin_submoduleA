@@ -3,8 +3,25 @@ const fs = require('fs');
 const path = require('path');
 const cheerio = require('cheerio');
 
-const publicDir = path.join(__dirname, 'public');
-const htmlFiles = fs.readdirSync(publicDir).filter(file => file.endsWith('.html'));
+const publicDir = path.join(__dirname, 'public/');
+
+function getHtmlFiles(dir) {
+  let htmlFiles = [];
+  const files = fs.readdirSync(dir);
+  files.forEach(file => {
+    const filePath = path.join(dir, file);
+    const stat = fs.statSync(filePath);
+    if (stat.isDirectory()) {
+      htmlFiles = htmlFiles.concat(getHtmlFiles(filePath));
+    } else if (file.endsWith('.html')) {
+      htmlFiles.push(filePath);
+    }
+  });
+  return htmlFiles;
+}
+
+const htmlFiles = getHtmlFiles(publicDir);
+// console.log(htmlFiles);
 
 const brokenLinks = {};
 const checkedFiles = [];
@@ -51,8 +68,7 @@ const siteChecker = new SiteChecker({
   }
 });
 
-htmlFiles.forEach(file => {
-  const filePath = path.join(publicDir, file);
+htmlFiles.forEach(filePath => {
   const content = fs.readFileSync(filePath, 'utf8');
   const $ = cheerio.load(content);
 
@@ -61,7 +77,7 @@ htmlFiles.forEach(file => {
   });
 
   fs.writeFileSync(filePath, $.html());
-  siteChecker.enqueue(`http://localhost:8081/${file}`);
+  siteChecker.enqueue(`http://localhost:8081/${path.relative(publicDir, filePath)}`);
 });
 
 async function notifyGitHub(brokenLinks) {
