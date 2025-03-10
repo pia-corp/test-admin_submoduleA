@@ -27,17 +27,17 @@ jobs:
         with:
           node-version: 18
 
-      - name: Start local server
-        run: |
-          npx serve -s public -l 38533 &
-          echo $! > .server-pid
-          sleep 5
+      # - name: Start local server
+      #   run: |
+      #     npx serve -s public -l 38533 &
+      #     echo $! > .server-pid
+      #     sleep 5
 
       - name: Run Lighthouse against a static dist dir
         id: lighthouse_audit
         uses: treosh/lighthouse-ci-action@v12
         with:
-          urls: 'https://localhost.com:38533/index.html'
+          urls: '/index.html'
           configPath: ./.github/config/.lighthouserc.json
           budgetPath: ./.github/config/.budget.json
           temporaryPublicStorage: true
