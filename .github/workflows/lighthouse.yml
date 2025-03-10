@@ -37,10 +37,12 @@ jobs:
         id: lighthouse_audit
         uses: treosh/lighthouse-ci-action@v12
         with:
+          urls: http://pia2024:piapiapia@piapiapia.xsrv.jp/test/clainel.jp/
           configPath: ./.github/config/.lighthouserc.json
           budgetPath: ./.github/config/.budget.json
           temporaryPublicStorage: true
         continue-on-error: true
+        # env: http://pia2024:piapiapia@piapiapia.xsrv.jp/test/clainel.jp/index.html
 
       - name: Comment on PR with Lighthouse results
         id: format_lighthouse_score
