@@ -23,26 +23,36 @@ jobs:
           ref: ${{ github.head_ref || github.ref_name }}
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4.2.0
         with:
-          node-version: 18
+          node-version: 20
 
-      # - name: Start local server
-      #   run: |
-      #     npx serve -s public -l 38533 &
-      #     echo $! > .server-pid
-      #     sleep 5
+      - name: Generate URLs
+        id: urls
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const globber = await glob.create('elements/*/demo/*.html');
+            const files = await globber.glob();
+            const urls = files
+              .map(x => x.match(/([\w-]+)/)[1])
+              .map(x => `${${{ env.DOMAIN }}}/components/${x}/demo/`)
+              .join('\n');
+            core.setOutput('urls', urls);
 
       - name: Run Lighthouse against a static dist dir
         id: lighthouse_audit
         uses: treosh/lighthouse-ci-action@v12
         with:
-          urls: http://pia2024:piapiapia@piapiapia.xsrv.jp/test/clainel.jp/
+          urls: |
+            ${{ steps.urls.outputs.urls }}
           configPath: ./.github/config/.lighthouserc.json
           budgetPath: ./.github/config/.budget.json
           temporaryPublicStorage: true
         continue-on-error: true
         # env: http://pia2024:piapiapia@piapiapia.xsrv.jp/test/clainel.jp/index.html
+        # http://pia2024:piapiapia@piapiapia.xsrv.jp/test/clainel.jp/
 
       - name: Comment on PR with Lighthouse results
         id: format_lighthouse_score
