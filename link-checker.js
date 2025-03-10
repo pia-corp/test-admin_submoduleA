@@ -35,7 +35,8 @@ function removeDuplicateLinks(brokenLinks) {
 }
 
 const siteChecker = new SiteChecker({
-  excludeExternalLinks: true,
+  excludeExternalLinks: false,
+  excludeInternalLinks: false,
   excludeLinksToSamePage: true,
   filterLevel: 3,
   acceptedSchemes: ["http", "https"],
@@ -45,8 +46,6 @@ const siteChecker = new SiteChecker({
     if (result.broken) {
       // 正規表現を使用してプロトコル + ドメイン部分を削除
       const file = result.base.original.replace(/^https?:\/\/[^/]+/, '');
-
-      // const file = result.base.original.split('/').pop();
 
       if (file != "/") {
         if (!brokenLinks[file]) {
