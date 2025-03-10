@@ -1,8 +1,8 @@
 {
   "ci": {
     "collect": {
-			"staticDistDir": "./public/",
-			"numberOfRuns": 1,
+      "staticDistDir": "/Users/pia-corp/test-admin_submoduleA/public/",
+			"numberOfRuns": 2,
       "settings": {
         "onlyCategories": ["performance", "accessibility", "best-practices", "seo"]
       }
