@@ -1,8 +1,7 @@
 {
   "ci": {
     "collect": {
-			"staticDistDir": "./public/",
-			"numberOfRuns": 2,
+			"numberOfRuns": 1,
       "settings": {
         "onlyCategories": ["performance", "accessibility", "best-practices", "seo"]
       }
