@@ -21,7 +21,6 @@ function getHtmlFiles(dir) {
 }
 
 const htmlFiles = getHtmlFiles(publicDir);
-// console.log(htmlFiles);
 
 const brokenLinks = {};
 const checkedFiles = [];
@@ -35,6 +34,7 @@ function removeDuplicateLinks(brokenLinks) {
 }
 
 const siteChecker = new SiteChecker({
+  excludedKeywords: ['https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
   excludeExternalLinks: false,
   excludeInternalLinks: false,
   excludeLinksToSamePage: true,
