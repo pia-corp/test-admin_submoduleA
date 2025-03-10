@@ -1,104 +1,127 @@
-# name: Lighthouse CI
+name: Lighthouse Audit
 
-# on:
-#   pull_request:
-#     branches:
-#       - main
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, edited, reopened, synchronize]
 
-# jobs:
-#   lighthouse:
-#     runs-on: ubuntu-latest
+jobs:
+  Lighthouse:
+    name: Lighthouse-CI
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
 
-#     steps:
-#       - name: Checkout repository
-#         uses: actions/checkout@v3
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4.2.2
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
 
-#       - name: Setup Node.js
-#         uses: actions/setup-node@v3
-#         with:
-#           node-version: 18
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
 
-#       - name: Install dependencies
-#         run: |
-#           npm install -g lighthouse
-#           sudo apt-get install jq
+      - name: Start local server
+        run: |
+          npx serve -s public -l 38533 &
+          echo $! > .server-pid
+          sleep 5
 
-#       - name: Start local server
-#         run: |
-#           npx serve -s public -l 38533 &
-#           echo $! > .server-pid
-#           sleep 5
+      - name: Run Lighthouse against a static dist dir
+        id: lighthouse_audit
+        uses: treosh/lighthouse-ci-action@v12
+        with:
+          urls: 'https://localhost.com:38533/index.html'
+          configPath: ./.github/config/.lighthouserc.json
+          budgetPath: ./.github/config/.budget.json
+          temporaryPublicStorage: true
+        continue-on-error: true
 
-#       - name: Get changed HTML files from main
-#         id: filter_html
-#         run: |
-#           git fetch origin main
-#           CHANGED_FILES=$(git diff --name-only origin/main -- "public/*.html")
-#           PORT=38533
-#           BASE_URL="http://localhost:$PORT"
-#           FILES=()
+      - name: Comment on PR with Lighthouse results
+        id: format_lighthouse_score
+        uses: actions/github-script@v7.0.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const urls = ${{ steps.lighthouse_audit.outputs.links }};
+            const assertions =${{ steps.lighthouse_audit.outputs.assertionResults }};
+            const manifest = ${{ steps.lighthouse_audit.outputs.manifest }};
 
-#           for file in $CHANGED_FILES; do
-#             RELATIVE_FILE_PATH=$(echo "$file" | sed 's|^public/||' | sed 's/\.html$//')
-#             FILES+=("\"$BASE_URL/$RELATIVE_FILE_PATH\"")
-#           done
+            console.log(urls);
+            console.log(assertions);
+            console.log(manifest);
 
-#           JSON_FILES=$(printf ",%s" "${FILES[@]}")
-#           JSON_FILES="[${JSON_FILES:1}]"
+            // JSONからURLとスコア情報を抽出
+            const scoreData = [];
 
-#           echo "urls=$JSON_FILES" >> $GITHUB_ENV
-#           echo "Changed files: ${CHANGED_FILES}"
+            // マニフェストからURLごとのデバイス情報とスコアを取得
+            for (const item of manifest) {
+              const urlKey = item.url;
+              const deviceType = item.isDesktop ? 'Desktop' : 'Mobile';
+              const reportUrl = urls[urlKey];
 
-#       - name: Run Lighthouse on changed files
-#         id: lighthouse
-#         run: |
-#           mkdir -p lhci_reports
-#           REPORTS=()
-#           SCORE_TABLE="| File Name | Performance | Accessibility | Best Practices | SEO | Report URL |\n|---|---|---|---|---|---|"
+              // ファイル名を取得（URLからパスのみを抽出）
+              const parsedUrl = new URL(urlKey);
+              const fileName = parsedUrl.pathname === '/' ? 'index.html' : parsedUrl.pathname.split('/').pop();
 
-#           for url in $(echo $urls | jq -r '.[]'); do
-#             FILENAME=$(basename "$url")
-#             REPORT_FILE="lhci_reports/${FILENAME}.json"
-#             HTML_REPORT="lhci_reports/${FILENAME}.html"
+              // 各カテゴリのスコアを取得 (summaryから直接取得)
+              if (item.summary) {
+                const performance = Math.round(item.summary.performance * 100);
+                const accessibility = Math.round(item.summary.accessibility * 100);
+                const bestPractices = Math.round(item.summary['best-practices'] * 100);
+                const seo = Math.round(item.summary.seo * 100);
 
-#             # Run Lighthouse
-#             npx lighthouse "$url" --quiet --output=json --output=html --chrome-flags="--headless" --output-path="$REPORT_FILE"
+                scoreData.push({
+                  fileName,
+                  device: deviceType,
+                  performance,
+                  accessibility,
+                  bestPractices,
+                  seo,
+                  reportUrl
+                });
+              }
+            }
 
-#             # Extract scores
-#             PERFORMANCE=$(jq '.categories.performance.score * 100' "$REPORT_FILE")
-#             ACCESSIBILITY=$(jq '.categories.accessibility.score * 100' "$REPORT_FILE")
-#             BEST_PRACTICES=$(jq '.categories."best-practices".score * 100' "$REPORT_FILE")
-#             SEO=$(jq '.categories.seo.score * 100' "$REPORT_FILE")
+            // マークダウンテーブルの作成
+            let markdownTable = '## 🔍 Lighthouse 監査結果\n\n';
+            markdownTable += '| File name | Device | Performance | Accessibility | Best Practices | SEO | Report URL |\n';
+            markdownTable += '| --------- | ------ | ----------- | ------------- | -------------- | --- | ---------- |\n';
 
-#             # Generate Report URL
-#             REPORT_URL="https://storage.googleapis.com/$GCS_BUCKET/lighthouse/${FILENAME}.html"
-#             REPORTS+=("$HTML_REPORT")
+            for (const data of scoreData) {
+              // スコアに基づいて絵文字を追加
+              const getEmojiForScore = (score) => {
+                if (score === undefined || score === null) return '⚪️';
+                if (score >= 90) return '🟢';
+                if (score >= 50) return '🟠';
+                return '🔴';
+              };
 
-#             # Add row to table
-#             SCORE_TABLE+="\n| $FILENAME | $PERFORMANCE | $ACCESSIBILITY | $BEST_PRACTICES | $SEO | [View Report]($REPORT_URL) |"
-#           done
+              markdownTable += `| ${data.fileName} | ${data.device} | ${getEmojiForScore(data.performance)} ${data.performance} | ${getEmojiForScore(data.accessibility)} ${data.accessibility} | ${getEmojiForScore(data.bestPractices)} ${data.bestPractices} | ${getEmojiForScore(data.seo)} ${data.seo} | [詳細](${data.reportUrl}) |\n`;
+            }
 
-#           echo "score_table<<EOF" >> $GITHUB_ENV
-#           echo "$SCORE_TABLE" >> $GITHUB_ENV
-#           echo "EOF" >> $GITHUB_ENV
+            // 概要説明を追加
+            markdownTable += '\n### スコア評価\n';
+            markdownTable += '- 🟢 90-100: 良好\n';
+            markdownTable += '- 🟠 50-89: 改善推奨\n';
+            markdownTable += '- 🔴 0-49: 要修正\n';
 
-#       - name: Upload Lighthouse reports to GCP
-#         env:
-#           GCS_BUCKET: your-gcs-bucket
-#           GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
-#         run: |
-#           echo "$GOOGLE_APPLICATION_CREDENTIALS" > gcp-key.json
-#           gcloud auth activate-service-account --key-file=gcp-key.json
-#           gsutil -m cp -r lhci_reports/*.html gs://$GCS_BUCKET/lighthouse/
+            // PRにコメントを投稿
+            const prNumber = context.payload.pull_request.number;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
 
-#       - name: Comment on PR with Lighthouse results
-#         uses: thollander/actions-comment-pull-request@v3
-#         with:
-#           message: |
-#             ## Lighthouse Report Results
-#             ${{ env.score_table }}
-#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: prNumber,
+              body: markdownTable
+            });
 
-#       - name: Stop local server
-#         run: |
-#           kill $(cat .server-pid)
+            console.log('Lighthouse監査結果をPRにコメントしました');
