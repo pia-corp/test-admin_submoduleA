@@ -1,99 +1,104 @@
-name: Lighthouse CI
+# name: Lighthouse CI
 
-on:
-  pull_request:
-    branches:
-      - main
+# on:
+#   pull_request:
+#     branches:
+#       - main
 
-jobs:
-  lighthouse:
-    runs-on: ubuntu-latest
+# jobs:
+#   lighthouse:
+#     runs-on: ubuntu-latest
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v3
+#     steps:
+#       - name: Checkout repository
+#         uses: actions/checkout@v3
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v3
-        with:
-          node-version: 18
+#       - name: Setup Node.js
+#         uses: actions/setup-node@v3
+#         with:
+#           node-version: 18
 
-      - name: Start local server
-        run: |
-          npx serve -s public -l 38533 &
-          echo $! > .server-pid
-          sleep 5
+#       - name: Install dependencies
+#         run: |
+#           npm install -g lighthouse
+#           sudo apt-get install jq
 
-      - name: Get changed HTML files from main
-        id: filter_html
-        run: |
-          git fetch origin main
-          CHANGED_FILES=$(git diff --name-only origin/main -- "public/*.html")
-          PORT=38533
-          BASE_URL="http://localhost:$PORT"
-          FILES=()
+#       - name: Start local server
+#         run: |
+#           npx serve -s public -l 38533 &
+#           echo $! > .server-pid
+#           sleep 5
 
-          for file in $CHANGED_FILES; do
-            RELATIVE_FILE_PATH=$(echo "$file" | sed 's|^public/||' | sed 's/\.html$//')
-            FILES+=("\"$BASE_URL/$RELATIVE_FILE_PATH\"")
-          done
+#       - name: Get changed HTML files from main
+#         id: filter_html
+#         run: |
+#           git fetch origin main
+#           CHANGED_FILES=$(git diff --name-only origin/main -- "public/*.html")
+#           PORT=38533
+#           BASE_URL="http://localhost:$PORT"
+#           FILES=()
 
-          JSON_FILES=$(printf ",%s" "${FILES[@]}")
-          JSON_FILES="[${JSON_FILES:1}]"
+#           for file in $CHANGED_FILES; do
+#             RELATIVE_FILE_PATH=$(echo "$file" | sed 's|^public/||' | sed 's/\.html$//')
+#             FILES+=("\"$BASE_URL/$RELATIVE_FILE_PATH\"")
+#           done
 
-          echo "urls=$JSON_FILES" >> $GITHUB_ENV
-          echo "Changed files: ${CHANGED_FILES}"
+#           JSON_FILES=$(printf ",%s" "${FILES[@]}")
+#           JSON_FILES="[${JSON_FILES:1}]"
 
-      - name: Run Lighthouse on changed files
-        id: lighthouse
-        run: |
-          mkdir -p lhci_reports
-          REPORTS=()
-          SCORE_TABLE="| File Name | Performance | Accessibility | Best Practices | SEO | Report URL |\n|---|---|---|---|---|---|"
+#           echo "urls=$JSON_FILES" >> $GITHUB_ENV
+#           echo "Changed files: ${CHANGED_FILES}"
 
-          for url in $(echo $urls | jq -r '.[]'); do
-            FILENAME=$(basename "$url")
-            REPORT_FILE="lhci_reports/${FILENAME}.json"
-            HTML_REPORT="lhci_reports/${FILENAME}.html"
+#       - name: Run Lighthouse on changed files
+#         id: lighthouse
+#         run: |
+#           mkdir -p lhci_reports
+#           REPORTS=()
+#           SCORE_TABLE="| File Name | Performance | Accessibility | Best Practices | SEO | Report URL |\n|---|---|---|---|---|---|"
 
-            # Run Lighthouse
-            npx lighthouse "$url" --quiet --output=json --output=html --chrome-flags="--headless" --output-path="$REPORT_FILE"
+#           for url in $(echo $urls | jq -r '.[]'); do
+#             FILENAME=$(basename "$url")
+#             REPORT_FILE="lhci_reports/${FILENAME}.json"
+#             HTML_REPORT="lhci_reports/${FILENAME}.html"
 
-            # Extract scores
-            PERFORMANCE=$(jq '.categories.performance.score * 100' "$REPORT_FILE")
-            ACCESSIBILITY=$(jq '.categories.accessibility.score * 100' "$REPORT_FILE")
-            BEST_PRACTICES=$(jq '.categories."best-practices".score * 100' "$REPORT_FILE")
-            SEO=$(jq '.categories.seo.score * 100' "$REPORT_FILE")
+#             # Run Lighthouse
+#             npx lighthouse "$url" --quiet --output=json --output=html --chrome-flags="--headless" --output-path="$REPORT_FILE"
 
-            # Generate Report URL
-            REPORT_URL="https://storage.googleapis.com/$GCS_BUCKET/lighthouse/${FILENAME}.html"
-            REPORTS+=("$HTML_REPORT")
+#             # Extract scores
+#             PERFORMANCE=$(jq '.categories.performance.score * 100' "$REPORT_FILE")
+#             ACCESSIBILITY=$(jq '.categories.accessibility.score * 100' "$REPORT_FILE")
+#             BEST_PRACTICES=$(jq '.categories."best-practices".score * 100' "$REPORT_FILE")
+#             SEO=$(jq '.categories.seo.score * 100' "$REPORT_FILE")
 
-            # Add row to table
-            SCORE_TABLE+="\n| $FILENAME | $PERFORMANCE | $ACCESSIBILITY | $BEST_PRACTICES | $SEO | [View Report]($REPORT_URL) |"
-          done
+#             # Generate Report URL
+#             REPORT_URL="https://storage.googleapis.com/$GCS_BUCKET/lighthouse/${FILENAME}.html"
+#             REPORTS+=("$HTML_REPORT")
 
-          echo "score_table<<EOF" >> $GITHUB_ENV
-          echo "$SCORE_TABLE" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+#             # Add row to table
+#             SCORE_TABLE+="\n| $FILENAME | $PERFORMANCE | $ACCESSIBILITY | $BEST_PRACTICES | $SEO | [View Report]($REPORT_URL) |"
+#           done
 
-      - name: Upload Lighthouse reports to GCP
-        env:
-          GCS_BUCKET: your-gcs-bucket
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
-        run: |
-          echo "$GOOGLE_APPLICATION_CREDENTIALS" > gcp-key.json
-          gcloud auth activate-service-account --key-file=gcp-key.json
-          gsutil -m cp -r lhci_reports/*.html gs://$GCS_BUCKET/lighthouse/
+#           echo "score_table<<EOF" >> $GITHUB_ENV
+#           echo "$SCORE_TABLE" >> $GITHUB_ENV
+#           echo "EOF" >> $GITHUB_ENV
 
-      - name: Comment on PR with Lighthouse results
-        uses: thollander/actions-comment-pull-request@v3
-        with:
-          message: |
-            ## Lighthouse Report Results
-            ${{ env.score_table }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#       - name: Upload Lighthouse reports to GCP
+#         env:
+#           GCS_BUCKET: your-gcs-bucket
+#           GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GCP_SERVICE_ACCOUNT_KEY }}
+#         run: |
+#           echo "$GOOGLE_APPLICATION_CREDENTIALS" > gcp-key.json
+#           gcloud auth activate-service-account --key-file=gcp-key.json
+#           gsutil -m cp -r lhci_reports/*.html gs://$GCS_BUCKET/lighthouse/
 
-      - name: Stop local server
-        run: |
-          kill $(cat .server-pid)
+#       - name: Comment on PR with Lighthouse results
+#         uses: thollander/actions-comment-pull-request@v3
+#         with:
+#           message: |
+#             ## Lighthouse Report Results
+#             ${{ env.score_table }}
+#           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+#       - name: Stop local server
+#         run: |
+#           kill $(cat .server-pid)
