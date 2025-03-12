@@ -1,6 +1,6 @@
 // PageSpeed Insights APIを呼び出すためのURLを作成
-// const PSI_API_KEY = process.env.PSI_API_KEY;
-const PSI_API_KEY = "AIzaSyDPYYkBQQcND0Gj38ynQ8CcSHxy18TQ9ik";
+const PSI_API_KEY = process.env.PSI_API_KEY;
+// const PSI_API_KEY = "AIzaSyDPYYkBQQcND0Gj38ynQ8CcSHxy18TQ9ik";
 const BASE_URL = process.env.BASE_URL || 'https://piapiapia.xsrv.jp/test/clainel.jp'; // 環境変数から取得
 
 if (!PSI_API_KEY) {
@@ -166,8 +166,8 @@ const getScoresWithRetry = async (url, retryCount = 0) => {
 async function main() {
   try {
     // 環境変数からHTMLファイルのリストを取得
-    // const htmlFilesEnv = process.env.HTML_FILES;
-    const htmlFilesEnv = 'company.html,index.html,';
+    const htmlFilesEnv = process.env.HTML_FILES;
+    // const htmlFilesEnv = 'company.html,index.html,';
 
     if (!htmlFilesEnv) {
       console.log("HTML_FILES環境変数が設定されていません");
