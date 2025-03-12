@@ -51,7 +51,7 @@ function getPathFromUrl(url) {
  * @return {Object|null} 分析結果またはエラー時はnull
  */
 const getScores = async (url, fileName) => {
-  console.log(`[${fileName}] PSI分析開始: ${url}`);
+  // console.log(`[${fileName}] PSI分析開始: ${url}`);
 
   const requestUrl = `${psiUrl}&url=${encodeURIComponent(url)}`;
   const requestUrlForMobile = `${requestUrl}&strategy=mobile`;
@@ -126,7 +126,7 @@ const getScores = async (url, fileName) => {
  * @return {Array<Object>} 成功した結果の配列
  */
 async function executeRequestsInBatches(files) {
-  const batchSize = 10;
+  const batchSize = 5;
   let allResults = [];
   let failedCount = 0;
 
@@ -162,7 +162,7 @@ async function executeRequestsInBatches(files) {
  */
 async function main() {
   try {
-    console.log("PSI分析処理開始");
+    // console.log("PSI分析処理開始");
 
     // 環境変数からHTMLファイルのリストを取得
     const htmlFilesEnv = process.env.HTML_FILES;
@@ -181,15 +181,15 @@ async function main() {
       htmlFiles = htmlFilesEnv.split(/\s+/).filter(file => file.trim());
     }
 
-    console.log(`取得対象のHTMLファイル数: ${htmlFiles.length}`);
-    console.log("HTML_FILES:", htmlFiles);
+    // console.log(`取得対象のHTMLファイル数: ${htmlFiles.length}`);
+    // console.log("HTML_FILES:", htmlFiles);
 
     if (htmlFiles.length === 0) {
       console.log("変更されたHTMLファイルはありません");
       return "No HTML files changed.";
     }
 
-    console.log("すべてのファイルのPSI分析を開始します\n");
+    // console.log("すべてのファイルのPSI分析を開始します\n");
     const successfulResults = await executeRequestsInBatches(htmlFiles);
 
     if (successfulResults.length === 0) {
