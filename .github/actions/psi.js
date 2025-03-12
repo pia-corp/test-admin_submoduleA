@@ -56,9 +56,7 @@ const getScores = async (url, fileName) => {
   const requestUrlForMobile = `${requestUrl}&strategy=mobile`;
   const requestUrlForDesktop = `${requestUrl}&strategy=desktop`;
 
-  if (requestUrl.mobile.performance >= 90) {
-    console.log(requestUrl);
-  }
+  console.log(requestUrlForMobile);
 
   try {
     // 同時に両方のリクエストを開始
