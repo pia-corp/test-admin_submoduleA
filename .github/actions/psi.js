@@ -127,7 +127,7 @@ async function main() {
       return "HTML files not provided.";
     }
 
-    const htmlFiles = htmlFilesEnv.split('\n').filter(file => file.trim());
+    const htmlFiles = htmlFilesEnv.split(',').filter(file => file.trim());
     console.log("HTML_FILES:", htmlFiles);
 
     if (htmlFiles.length === 0) {
