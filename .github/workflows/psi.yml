@@ -57,7 +57,7 @@ jobs:
   check_psi:
     needs: extract-html-diff
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     if: ${{ needs.extract-html-diff.outputs.html_count > 0 }}
     steps:
       - uses: actions/checkout@v4
