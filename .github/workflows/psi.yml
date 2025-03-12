@@ -69,6 +69,7 @@ jobs:
       - name: Check PSI
         env:
           PSI_API_KEY: ${{ secrets.PSI_API_KEY }}
+          BASE_URL: "https://piapiapia.xsrv.jp/test/molak.jp"
           HTML_FILES: ${{ needs.extract-html-diff.outputs.html_files }}
           # SLACK_APP_TOKEN: ${{ secrets.SLACK_APP_TOKEN }}
           # SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
