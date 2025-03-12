@@ -22,7 +22,8 @@ jobs:
         run: |
           # mainブランチとの差分から.htmlファイルだけを抽出
           # HTML_FILES=$(git diff --name-only origin/main HEAD | grep 'public/\.*\.html$' | tr '\n' ',' || echo "")
-          HTML_FILES=$(git diff --name-only origin/main HEAD | grep 'public/\.*\.html$' | sed 's#public/##g' | tr '\n' ',' || echo "")
+          # HTML_FILES=$(git diff --name-only origin/main HEAD | grep 'public/.*\.html$' | tr '\n' ',' || echo "")
+          HTML_FILES=$(git diff --name-only origin/main HEAD | grep 'public/.*\.html$' | sed 's#public/##g' | tr '\n' ',' || echo "")
 
           # 結果を出力
           if [ -z "$HTML_FILES" ]; then
