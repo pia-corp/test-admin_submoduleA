@@ -1,4 +1,4 @@
-name: psi
+name: PageSpeed Insights Check
 on:
   pull_request:
     branches:
@@ -8,6 +8,9 @@ on:
 jobs:
   extract-html-diff:
     runs-on: ubuntu-latest
+    outputs:
+      html_files: ${{ steps.set_output.outputs.html_files }}
+      html_count: ${{ steps.set_output.outputs.html_count }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -18,7 +21,7 @@ jobs:
         id: extract_diff
         run: |
           # mainブランチとの差分から.htmlファイルだけを抽出
-          HTML_FILES=$(git diff --name-only origin/main HEAD | grep 'public/\.*\.html$' || echo "")
+          HTML_FILES=$(git diff --name-only origin/main HEAD | grep 'public/.*\.html$' || echo "")
 
           # 結果を出力
           if [ -z "$HTML_FILES" ]; then
@@ -26,50 +29,52 @@ jobs:
           else
             echo "HTML files changed:"
             echo "$HTML_FILES"
-            # GitHub Actionsの出力変数にセット
-            echo "html_files<<EOF" >> $GITHUB_ENV
-            echo "$HTML_FILES" >> $GITHUB_ENV
-            echo "EOF" >> $GITHUB_ENV
           fi
 
           # 変更があったHTMLファイルの数をカウント
           HTML_COUNT=$(echo "$HTML_FILES" | grep -v '^$' | wc -l)
-          echo "html_count=$HTML_COUNT" >> $GITHUB_ENV
 
-      - name: Use HTML files in next steps
+          # 次のステップで使用するために一時ファイルに保存
+          echo "$HTML_FILES" > /tmp/html_files.txt
+          echo "$HTML_COUNT" > /tmp/html_count.txt
+
+      - name: Set output values
+        id: set_output
         run: |
-          echo "Number of HTML files changed: ${{ env.html_count }}"
+          HTML_FILES=$(cat /tmp/html_files.txt)
+          HTML_COUNT=$(cat /tmp/html_count.txt)
 
-          # 変更されたHTMLファイルに対して何か処理をする例
-          if [ "${{ env.html_count }}" -gt 0 ]; then
-            echo "Processing changed HTML files:"
-            echo "${{ env.html_files }}"
+          # マルチラインの出力を適切にエスケープ
+          HTML_FILES_ESCAPED="${HTML_FILES//'%'/'%25'}"
+          HTML_FILES_ESCAPED="${HTML_FILES_ESCAPED//$'\n'/'%0A'}"
+          HTML_FILES_ESCAPED="${HTML_FILES_ESCAPED//$'\r'/'%0D'}"
 
-            # ここで変更されたHTMLファイルに対して追加の処理を行う
-            # 例: ファイル一覧をテキストファイルに保存
-            echo "${{ env.html_files }}" > changed_html_files.txt
-          fi
+          echo "html_files=$HTML_FILES_ESCAPED" >> $GITHUB_OUTPUT
+          echo "html_count=$HTML_COUNT" >> $GITHUB_OUTPUT
 
   check_psi:
     needs: extract-html-diff
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    if: ${{ needs.extract-html-diff.outputs.html_count > 0 }}
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v3
         with:
           node-version: '18'
-          cache: 'yarn'
+
       - run: yarn
+
       - name: Check PSI
         env:
-          PSI_API_KEY: ${{secrets.PSI_API_KEY}}
-          HTML_FILES: ${{ env.html_files }} # html_files環境変数を渡す
-          # SLACK_APP_TOKEN: ${{secrets.SLACK_APP_TOKEN}}
-          # SLACK_CHANNEL_ID: ${{secrets.SLACK_CHANNEL_ID}}
+          PSI_API_KEY: ${{ secrets.PSI_API_KEY }}
+          HTML_FILES: ${{ needs.extract-html-diff.outputs.html_files }}
+          # SLACK_APP_TOKEN: ${{ secrets.SLACK_APP_TOKEN }}
+          # SLACK_CHANNEL_ID: ${{ secrets.SLACK_CHANNEL_ID }}
         id: psi_check
         run: |
-          echo "HTML_FILES: ${{ env.HTML_FILES }}"
+          echo "HTML_FILES: ${{ needs.extract-html-diff.outputs.html_files }}"
           RESULT=$(node .github/actions/psi)
           echo "result<<EOF" >> $GITHUB_OUTPUT
           echo "$RESULT" >> $GITHUB_OUTPUT
@@ -77,9 +82,14 @@ jobs:
 
       - name: Comment PR with PSI results
         uses: actions/github-script@v7.0.1
+        if: ${{ steps.psi_check.outcome == 'success' }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            ## PageSpeed Insights Results
-            ${{ steps.psi_check.outputs.result }}
-            if: ${{ steps.psi_check.outcome == 'success' }} # 必要に応じて成功時のみコメント
+            const result = `${{ steps.psi_check.outputs.result }}`;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## PageSpeed Insights Results\n\n${result}`
+            });

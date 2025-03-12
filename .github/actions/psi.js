@@ -1,20 +1,36 @@
-let process =;
-process.env =;
-process["env"]["PSI_API_KEY"] = "AIzaSyDPYYkBQQcND0Gj38ynQ8CcSHxy18TQ9ik";
+// PageSpeed Insights APIを呼び出すためのURLを作成
+const PSI_API_KEY = process.env.PSI_API_KEY;
+const BASE_URL = process.env.BASE_URL || 'https://piapiapia.xsrv.jp/test/clainel.jp'; // 環境変数から取得
 
-const psiUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?key=${process.env.PSI_API_KEY}&category=performance&category=accessibility&category=best-practices&category=seo`
-const scoreWithEmoji = (score) => {
-  if (score >= 90) {
-    return `:white_check_mark: ${score}`
-  } else if (score >= 70) {
-    return `:warning: ${score}`
-  } else if (score >= 50) {
-    return `:rotating_light: ${score}`
-  } else {
-    return `:scream: ${score}`
-  }
+if (!PSI_API_KEY) {
+  console.error('PSI_API_KEY環境変数が設定されていません');
+  process.exit(1);
 }
 
+const psiUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?key=${PSI_API_KEY}&category=performance&category=accessibility&category=best-practices&category=seo`;
+
+/**
+ * スコアに基づいて絵文字を付与する関数
+ * @param {number} score - PageSpeed Insightsのスコア
+ * @return {string} 絵文字付きのスコア文字列
+ */
+const scoreWithEmoji = (score) => {
+  if (score >= 90) {
+    return `:white_check_mark: ${score}`;
+  } else if (score >= 70) {
+    return `:warning: ${score}`;
+  } else if (score >= 50) {
+    return `:rotating_light: ${score}`;
+  } else {
+    return `:scream: ${score}`;
+  }
+};
+
+/**
+ * URLからパスを抽出する関数
+ * @param {string} url - 解析するURL
+ * @return {string|null} パス部分または無効なURLの場合はnull
+ */
 function getPathFromUrl(url) {
   try {
     const urlObject = new URL(url);
@@ -25,27 +41,54 @@ function getPathFromUrl(url) {
   }
 }
 
+/**
+ * 指定したURLに対してPageSpeed Insightsを実行する関数
+ * @param {string} url - 分析するURL
+ * @return {Object|null} 分析結果またはエラー時はnull
+ */
 const getScores = async (url) => {
-  const requestUrl = `${psiUrl}&url=${url}`
-  const requestUrlForMobile = `${requestUrl}&strategy=mobile`
-  const requestUrlForDesktop = `${requestUrl}&strategy=desktop`
+  const requestUrl = `${psiUrl}&url=${encodeURIComponent(url)}`;
+  const requestUrlForMobile = `${requestUrl}&strategy=mobile`;
+  const requestUrlForDesktop = `${requestUrl}&strategy=desktop`;
 
   try {
-    const resMobile = await fetch(requestUrlForMobile)
-    const dataMobile = await resMobile.json()
-    const { categories } = dataMobile.lighthouseResult
-    const performanceScoreMobile = Math.round(categories.performance.score * 100)
-    const accessibilityScoreMobile = Math.round(categories.accessibility.score * 100)
-    const bestPracticesScoreMobile = Math.round(categories['best-practices'].score * 100)
-    const seoScoreMobile = Math.round(categories.seo.score * 100)
+    // モバイル版の結果を取得
+    const resMobile = await fetch(requestUrlForMobile);
 
-    const resDesktop = await fetch(requestUrlForDesktop)
-    const dataDesktop = await resDesktop.json()
-    const { categories: categoriesDesktop } = dataDesktop.lighthouseResult
-    const performanceScoreDesktop = Math.round(categoriesDesktop.performance.score * 100)
-    const accessibilityScoreDesktop = Math.round(categoriesDesktop.accessibility.score * 100)
-    const bestPracticesScoreDesktop = Math.round(categoriesDesktop['best-practices'].score * 100)
-    const seoScoreDesktop = Math.round(categoriesDesktop.seo.score * 100)
+    if (!resMobile.ok) {
+      throw new Error(`API returned status ${resMobile.status} for mobile: ${await resMobile.text()}`);
+    }
+
+    const dataMobile = await resMobile.json();
+
+    if (!dataMobile.lighthouseResult || !dataMobile.lighthouseResult.categories) {
+      throw new Error('Invalid API response structure for mobile');
+    }
+
+    const { categories } = dataMobile.lighthouseResult;
+    const performanceScoreMobile = Math.round(categories.performance.score * 100);
+    const accessibilityScoreMobile = Math.round(categories.accessibility.score * 100);
+    const bestPracticesScoreMobile = Math.round(categories['best-practices'].score * 100);
+    const seoScoreMobile = Math.round(categories.seo.score * 100);
+
+    // デスクトップ版の結果を取得
+    const resDesktop = await fetch(requestUrlForDesktop);
+
+    if (!resDesktop.ok) {
+      throw new Error(`API returned status ${resDesktop.status} for desktop: ${await resDesktop.text()}`);
+    }
+
+    const dataDesktop = await resDesktop.json();
+
+    if (!dataDesktop.lighthouseResult || !dataDesktop.lighthouseResult.categories) {
+      throw new Error('Invalid API response structure for desktop');
+    }
+
+    const { categories: categoriesDesktop } = dataDesktop.lighthouseResult;
+    const performanceScoreDesktop = Math.round(categoriesDesktop.performance.score * 100);
+    const accessibilityScoreDesktop = Math.round(categoriesDesktop.accessibility.score * 100);
+    const bestPracticesScoreDesktop = Math.round(categoriesDesktop['best-practices'].score * 100);
+    const seoScoreDesktop = Math.round(categoriesDesktop.seo.score * 100);
 
     return {
       url,
@@ -61,39 +104,60 @@ const getScores = async (url) => {
         bestPractices: bestPracticesScoreDesktop,
         seo: seoScoreDesktop,
       },
-    }
+    };
   } catch (error) {
-    console.error(`PageSpeed Insights の実行中にエラーが発生しました: ${url}`, error)
-    return null
+    console.error(`PageSpeed Insights の実行中にエラーが発生しました: ${url}`, error);
+    return null;
   }
-}
+};
 
-;(async () => {
+/**
+ * メイン処理を実行する関数
+ * @return {string} 結果のマークダウン文字列
+ */
+async function main() {
   try {
-    const htmlFiles = process.env.HTML_FILES ? process.env.HTML_FILES.split('\n') :;
+    // 環境変数からHTMLファイルのリストを取得
+    const htmlFilesEnv = process.env.HTML_FILES;
+
+    if (!htmlFilesEnv) {
+      console.log("HTML_FILES環境変数が設定されていません");
+      return "HTML files not provided.";
+    }
+
+    const htmlFiles = htmlFilesEnv.split('\n').filter(file => file.trim());
     console.log("HTML_FILES:", htmlFiles);
 
     if (htmlFiles.length === 0) {
-      console.log("No HTML files changed.");
+      console.log("変更されたHTMLファイルはありません");
       return "No HTML files changed.";
     }
 
-    const results =;
+    // 各HTMLファイルに対してPageSpeed Insightsを実行
+    const results = [];
     for (const file of htmlFiles) {
-      const result = await getScores(`https://piapiapia.xsrv.jp/test/clainel.jp/${file}`); //URLは変数で変更できるようにしてください。
+      console.log(`Analyzing file: ${file}`);
+      const fullUrl = `${BASE_URL}/${file.trim()}`;
+      console.log(`Full URL: ${fullUrl}`);
+
+      const result = await getScores(fullUrl);
       if (result) {
         results.push(result);
+      } else {
+        console.log(`Failed to get results for ${fullUrl}`);
       }
     }
 
     if (results.length === 0) {
-       return "No PageSpeed Insights results obtained.";
+      return "No PageSpeed Insights results obtained.";
     }
 
+    // 結果をマークダウン形式で出力
     let markdown = ``;
     for (const result of results) {
+      const path = getPathFromUrl(result.url) || result.url;
       markdown += `
-### ${result.url}
+### ${path}
 
 |   | Performance | Accessibility | Best Practices | SEO |
 | :-- | :--: | :--: | :--: | :--: |
@@ -103,8 +167,19 @@ const getScores = async (url) => {
     }
 
     console.log(markdown);
-    return markdown
+    return markdown;
   } catch (err) {
-    console.error(err)
+    console.error("予期しないエラーが発生しました:", err);
+    return `Error occurred: ${err.message}`;
   }
-})()
+}
+
+// メイン処理を実行
+main().then(result => {
+  // GitHub Actions用に出力
+  console.log(result);
+  process.exit(0);
+}).catch(error => {
+  console.error(error);
+  process.exit(1);
+});
