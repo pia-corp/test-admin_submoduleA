@@ -113,53 +113,6 @@ const getScores = async (url) => {
 };
 
 /**
- * 指定したURLに対してPageSpeed Insightsを実行する関数
- * スコアが0の場合、最大3回まで再試行する
- * @param {string} url - 分析するURL
- * @param {number} retryCount - 再試行回数
- * @return {Object|null} 分析結果またはエラー時はnull
- */
-const getScoresWithRetry = async (url, retryCount = 0) => {
-  const maxRetries = 3; // 最大再試行回数
-  const retryDelay = 1000; // 再試行間隔（ミリ秒）
-
-  try {
-    const result = await getScores(url);
-
-    if (!result) {
-      return null; // エラーの場合はnullを返す
-    }
-
-    // いずれかのスコアが0の場合は再試行
-    if (
-      result.mobile.performance === 0 ||
-      result.mobile.accessibility === 0 ||
-      result.mobile.bestPractices === 0 ||
-      result.mobile.seo === 0 ||
-      result.desktop.performance === 0 ||
-      result.desktop.accessibility === 0 ||
-      result.desktop.bestPractices === 0 ||
-      result.desktop.seo === 0
-    ) {
-      if (retryCount < maxRetries) {
-        console.log(`${url} のスコアが0のため、${retryCount + 1}回目の再試行を行います。`);
-        await new Promise((resolve) => setTimeout(resolve, retryDelay)); // 少し待機
-        return await getScoresWithRetry(url, retryCount + 1); // 再帰呼び出し
-      } else {
-        console.warn(`${url} のスコアが0のため、再試行を${maxRetries}回行いましたが、改善しませんでした。`);
-        return result; // 最大回数再試行しても改善しない場合は結果を返す
-      }
-    }
-
-    return result; // スコアが0でない場合は結果を返す
-
-  } catch (error) {
-    console.error(`PageSpeed Insights の実行中にエラーが発生しました: ${url}`, error);
-    return null;
-  }
-};
-
-/**
  * メイン処理を実行する関数
  * @return {string} 結果のマークダウン文字列
  */
@@ -174,7 +127,7 @@ async function main() {
       return "HTML files not provided.";
     }
 
-    const htmlFiles = htmlFilesEnv.split(',').filter(file => file.trim());
+    const htmlFiles = htmlFilesEnv.split('\n').filter(file => file.trim());
     console.log("HTML_FILES:", htmlFiles);
 
     if (htmlFiles.length === 0) {
@@ -189,8 +142,7 @@ async function main() {
       const fullUrl = `${BASE_URL}/${file.trim()}`;
       console.log(`Full URL: ${fullUrl}`);
 
-      // getScores の呼び出しを getScoresWithRetry に変更
-      const result = await getScoresWithRetry(fullUrl);
+      const result = await getScores(fullUrl);
       if (result) {
         results.push(result);
       } else {
