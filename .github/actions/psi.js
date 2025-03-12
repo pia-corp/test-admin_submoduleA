@@ -1,5 +1,6 @@
 // PageSpeed Insights APIを呼び出すためのURLを作成
-const PSI_API_KEY = process.env.PSI_API_KEY;
+// const PSI_API_KEY = process.env.PSI_API_KEY;
+const PSI_API_KEY = "AIzaSyDPYYkBQQcND0Gj38ynQ8CcSHxy18TQ9ik";
 const BASE_URL = process.env.BASE_URL || 'https://piapiapia.xsrv.jp/test/clainel.jp'; // 環境変数から取得
 
 if (!PSI_API_KEY) {
@@ -16,13 +17,13 @@ const psiUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?key=$
  */
 const scoreWithEmoji = (score) => {
   if (score >= 90) {
-    return `:white_check_mark: ${score}`;
+    return `:green_circle: ${score}`;
   } else if (score >= 70) {
-    return `:warning: ${score}`;
+    return `:orange_circle: ${score}`;
   } else if (score >= 50) {
-    return `:rotating_light: ${score}`;
+    return `:red_circle: ${score}`;
   } else {
-    return `:scream: ${score}`;
+    return `:warning: ${score}`;
   }
 };
 
@@ -112,20 +113,56 @@ const getScores = async (url) => {
 };
 
 /**
+ * スコア取得を再試行する関数
+ * @param {string} url - 分析するURL
+ * @param {number} maxRetries - 最大リトライ回数
+ * @return {Object|null} 分析結果またはエラー時はnull
+ */
+const getScoresWithRetry = async (url, maxRetries = 3) => {
+  let attempt = 0;
+  let result = null;
+
+  while (attempt < maxRetries) {
+    result = await getScores(url);
+
+    if (!result) {
+      console.log(`Attempt ${attempt + 1}: Failed to get results for ${url}, retrying...`);
+    } else {
+      const hasZeroScore = Object.values(result.mobile).concat(Object.values(result.desktop)).some(score => score === 0);
+
+      if (!hasZeroScore) {
+        return result;
+      }
+
+      console.log(`Attempt ${attempt + 1}: ${url} has a score of 0, retrying...`);
+    }
+
+    attempt++;
+    if (attempt < maxRetries) {
+      await new Promise(resolve => setTimeout(resolve, 5000)); // 5秒待機
+    }
+  }
+
+  console.log(`Max retries reached for ${url}. Skipping...`);
+  return result;
+};
+
+/**
  * メイン処理を実行する関数
  * @return {string} 結果のマークダウン文字列
  */
 async function main() {
   try {
     // 環境変数からHTMLファイルのリストを取得
-    const htmlFilesEnv = process.env.HTML_FILES;
+    // const htmlFilesEnv = process.env.HTML_FILES;
+    const htmlFilesEnv = 'company.html,index.html,';
 
     if (!htmlFilesEnv) {
       console.log("HTML_FILES環境変数が設定されていません");
       return "HTML files not provided.";
     }
 
-    const htmlFiles = htmlFilesEnv.split('\n').filter(file => file.trim());
+    const htmlFiles = htmlFilesEnv.split(',').filter(file => file.trim());
     console.log("HTML_FILES:", htmlFiles);
 
     if (htmlFiles.length === 0) {
@@ -133,18 +170,16 @@ async function main() {
       return "No HTML files changed.";
     }
 
-    // 各HTMLファイルに対してPageSpeed Insightsを実行
     const results = [];
     for (const file of htmlFiles) {
-      console.log(`Analyzing file: ${file}`);
       const fullUrl = `${BASE_URL}/${file.trim()}`;
-      console.log(`Full URL: ${fullUrl}`);
+      console.log(`Analyzing file: ${fullUrl}`);
 
-      const result = await getScores(fullUrl);
+      const result = await getScoresWithRetry(fullUrl, 3);
       if (result) {
         results.push(result);
       } else {
-        console.log(`Failed to get results for ${fullUrl}`);
+        console.log(`Failed to get valid results for ${fullUrl} after retries.`);
       }
     }
 
@@ -159,7 +194,7 @@ async function main() {
       markdown += `
 ### ${path}
 
-|   | Performance | Accessibility | Best Practices | SEO |
+| Device | Performance | Accessibility | Best Practices | SEO |
 | :-- | :--: | :--: | :--: | :--: |
 | Mobile  | ${scoreWithEmoji(result.mobile.performance)} | ${scoreWithEmoji(result.mobile.accessibility)} | ${scoreWithEmoji(result.mobile.bestPractices)} | ${scoreWithEmoji(result.mobile.seo)} |
 | Desktop | ${scoreWithEmoji(result.desktop.performance)} | ${scoreWithEmoji(result.desktop.accessibility)} | ${scoreWithEmoji(result.desktop.bestPractices)} | ${scoreWithEmoji(result.desktop.seo)} |
