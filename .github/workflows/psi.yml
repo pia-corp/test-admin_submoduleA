@@ -51,6 +51,7 @@ jobs:
           fi
 
   check_psi:
+    needs: extract-html-diff
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
