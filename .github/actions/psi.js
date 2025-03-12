@@ -141,6 +141,7 @@ async function executeRequestsInBatches(files) {
     console.log(`${i + batch.length}件のリクエスト完了`);
 
     results.forEach(result => {
+      console.log(result);
       if (result.status === 'fulfilled' && result.value !== null) {
         allResults.push(result.value);
       } else {
@@ -201,17 +202,12 @@ async function main() {
     markdown += `**分析日時**: ${new Date().toISOString()}\n`;
     markdown += `**分析サイト**: ${BASE_URL}\n`;
     markdown += `**分析ファイル数**: ${successfulResults.length}/${htmlFiles.length}\n\n`;
+    markdown += `| Path | Device | Perf | A11Y | BP | SEO | Device | Perf | A11Y | BP | SEO |`;
+    markdown += `| :-- | :-- | :--: | :--: | :--: | :--: | :-- | :--: | :--: | :--: | :--: |`;
 
     for (const result of successfulResults) {
       const path = result.fileName || getPathFromUrl(result.url) || result.url;
-      markdown += `
-### ${path}
-
-| Device | Performance | Accessibility | Best Practices | SEO |
-| :-- | :--: | :--: | :--: | :--: |
-| Mobile  | ${scoreWithEmoji(result.mobile.performance)} | ${scoreWithEmoji(result.mobile.accessibility)} | ${scoreWithEmoji(result.mobile.bestPractices)} | ${scoreWithEmoji(result.mobile.seo)} |
-| Desktop | ${scoreWithEmoji(result.desktop.performance)} | ${scoreWithEmoji(result.desktop.accessibility)} | ${scoreWithEmoji(result.desktop.bestPractices)} | ${scoreWithEmoji(result.desktop.seo)} |
-`;
+      markdown += `| ${path} | M | ${scoreWithEmoji(result.mobile.performance)} | ${scoreWithEmoji(result.mobile.accessibility)} | ${scoreWithEmoji(result.mobile.bestPractices)} | ${scoreWithEmoji(result.mobile.seo)} | D | ${scoreWithEmoji(result.desktop.performance)} | ${scoreWithEmoji(result.desktop.accessibility)} | ${scoreWithEmoji(result.desktop.bestPractices)} | ${scoreWithEmoji(result.desktop.seo)} |`;
     }
 
     console.log("マークダウンレポート生成完了");
