@@ -1,7 +1,8 @@
 // PageSpeed Insights APIを呼び出すためのURLを作成
 const PSI_API_KEY = "AIzaSyDPYYkBQQcND0Gj38ynQ8CcSHxy18TQ9ik";
-const BASE_URL = process.env.BASE_URL || 'https://piapiapia.xsrv.jp/test/molak.jp';
-const htmlFilesEnv = "product/dark_peony.html,product/dazzle_beige.html,product/dazzle_gray.html,product/dazzle_gray_toric.html,product/dollish_brown.html,product/dollish_brown_toric.html,product/dollish_gray.html,product/dream_gray.html,product/melty_mist.html,product/mirror_gray.html";
+const BASE_URL = process.env.BASE_URL;
+// const BASE_URL = process.env.BASE_URL || 'https://piapiapia.xsrv.jp/test/molak.jp';
+// const htmlFilesEnv = "product/dark_peony.html,product/dazzle_beige.html,product/dazzle_gray.html,product/dazzle_gray_toric.html,product/dollish_brown.html,product/dollish_brown_toric.html,product/dollish_gray.html,product/dream_gray.html,product/melty_mist.html,product/mirror_gray.html";
 
 if (!PSI_API_KEY) {
   console.error('PSI_API_KEY環境変数が設定されていません');
@@ -54,6 +55,10 @@ const getScores = async (url, fileName) => {
   const requestUrl = `${psiUrl}&url=${encodeURIComponent(url)}`;
   const requestUrlForMobile = `${requestUrl}&strategy=mobile`;
   const requestUrlForDesktop = `${requestUrl}&strategy=desktop`;
+
+  if (requestUrl.mobile.performance >= 90) {
+    console.log(requestUrl);
+  }
 
   try {
     // 同時に両方のリクエストを開始
@@ -161,7 +166,7 @@ async function main() {
     console.log("PSI分析処理開始");
 
     // 環境変数からHTMLファイルのリストを取得
-    // const htmlFilesEnv = process.env.HTML_FILES;
+    const htmlFilesEnv = process.env.HTML_FILES;
 
     if (!htmlFilesEnv) {
       console.log("HTML_FILES環境変数が設定されていません");
