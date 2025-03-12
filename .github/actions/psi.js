@@ -126,7 +126,7 @@ const getScores = async (url, fileName) => {
  * @return {Array<Object>} 成功した結果の配列
  */
 async function executeRequestsInBatches(files) {
-  const batchSize = 5;
+  const batchSize = 1;
   let allResults = [];
   let failedCount = 0;
 
@@ -202,12 +202,12 @@ async function main() {
     markdown += `**分析日時**: ${new Date().toISOString()}\n`;
     markdown += `**分析サイト**: ${BASE_URL}\n`;
     markdown += `**分析ファイル数**: ${successfulResults.length}/${htmlFiles.length}\n\n`;
-    markdown += `| Path | Device | Perf | A11Y | BP | SEO | Device | Perf | A11Y | BP | SEO |`;
-    markdown += `| :-- | :-- | :--: | :--: | :--: | :--: | :-- | :--: | :--: | :--: | :--: |`;
+    markdown += `| Path | Device | Perf | A11Y | BP | SEO | Device | Perf | A11Y | BP | SEO |\n`;
+    markdown += `| :-- | :-- | :--: | :--: | :--: | :--: | :-- | :--: | :--: | :--: | :--: |\n`;
 
     for (const result of successfulResults) {
       const path = result.fileName || getPathFromUrl(result.url) || result.url;
-      markdown += `| ${path} | M | ${scoreWithEmoji(result.mobile.performance)} | ${scoreWithEmoji(result.mobile.accessibility)} | ${scoreWithEmoji(result.mobile.bestPractices)} | ${scoreWithEmoji(result.mobile.seo)} | D | ${scoreWithEmoji(result.desktop.performance)} | ${scoreWithEmoji(result.desktop.accessibility)} | ${scoreWithEmoji(result.desktop.bestPractices)} | ${scoreWithEmoji(result.desktop.seo)} |`;
+      markdown += `| ${path} | M | ${scoreWithEmoji(result.mobile.performance)} | ${scoreWithEmoji(result.mobile.accessibility)} | ${scoreWithEmoji(result.mobile.bestPractices)} | ${scoreWithEmoji(result.mobile.seo)} | D | ${scoreWithEmoji(result.desktop.performance)} | ${scoreWithEmoji(result.desktop.accessibility)} | ${scoreWithEmoji(result.desktop.bestPractices)} | ${scoreWithEmoji(result.desktop.seo)} |\n`;
     }
 
     console.log("マークダウンレポート生成完了");
