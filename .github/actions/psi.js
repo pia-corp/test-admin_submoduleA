@@ -113,38 +113,50 @@ const getScores = async (url) => {
 };
 
 /**
- * スコア取得を再試行する関数
+ * 指定したURLに対してPageSpeed Insightsを実行する関数
+ * スコアが0の場合、最大3回まで再試行する
  * @param {string} url - 分析するURL
- * @param {number} maxRetries - 最大リトライ回数
+ * @param {number} retryCount - 再試行回数
  * @return {Object|null} 分析結果またはエラー時はnull
  */
-const getScoresWithRetry = async (url, maxRetries = 3) => {
-  let attempt = 0;
-  let result = null;
+const getScoresWithRetry = async (url, retryCount = 0) => {
+  const maxRetries = 3; // 最大再試行回数
+  const retryDelay = 1000; // 再試行間隔（ミリ秒）
 
-  while (attempt < maxRetries) {
-    result = await getScores(url);
+  try {
+    const result = await getScores(url);
 
     if (!result) {
-      console.log(`Attempt ${attempt + 1}: Failed to get results for ${url}, retrying...`);
-    } else {
-      const hasZeroScore = Object.values(result.mobile).concat(Object.values(result.desktop)).some(score => score === 0);
+      return null; // エラーの場合はnullを返す
+    }
 
-      if (!hasZeroScore) {
-        return result;
+    // いずれかのスコアが0の場合は再試行
+    if (
+      result.mobile.performance === 0 ||
+      result.mobile.accessibility === 0 ||
+      result.mobile.bestPractices === 0 ||
+      result.mobile.seo === 0 ||
+      result.desktop.performance === 0 ||
+      result.desktop.accessibility === 0 ||
+      result.desktop.bestPractices === 0 ||
+      result.desktop.seo === 0
+    ) {
+      if (retryCount < maxRetries) {
+        console.log(`${url} のスコアが0のため、${retryCount + 1}回目の再試行を行います。`);
+        await new Promise((resolve) => setTimeout(resolve, retryDelay)); // 少し待機
+        return await getScoresWithRetry(url, retryCount + 1); // 再帰呼び出し
+      } else {
+        console.warn(`${url} のスコアが0のため、再試行を${maxRetries}回行いましたが、改善しませんでした。`);
+        return result; // 最大回数再試行しても改善しない場合は結果を返す
       }
-
-      console.log(`Attempt ${attempt + 1}: ${url} has a score of 0, retrying...`);
     }
 
-    attempt++;
-    if (attempt < maxRetries) {
-      await new Promise(resolve => setTimeout(resolve, 5000)); // 5秒待機
-    }
+    return result; // スコアが0でない場合は結果を返す
+
+  } catch (error) {
+    console.error(`PageSpeed Insights の実行中にエラーが発生しました: ${url}`, error);
+    return null;
   }
-
-  console.log(`Max retries reached for ${url}. Skipping...`);
-  return result;
 };
 
 /**
@@ -170,16 +182,19 @@ async function main() {
       return "No HTML files changed.";
     }
 
+    // 各HTMLファイルに対してPageSpeed Insightsを実行
     const results = [];
     for (const file of htmlFiles) {
+      console.log(`Analyzing file: ${file}`);
       const fullUrl = `${BASE_URL}/${file.trim()}`;
-      console.log(`Analyzing file: ${fullUrl}`);
+      console.log(`Full URL: ${fullUrl}`);
 
-      const result = await getScoresWithRetry(fullUrl, 3);
+      // getScores の呼び出しを getScoresWithRetry に変更
+      const result = await getScoresWithRetry(fullUrl);
       if (result) {
         results.push(result);
       } else {
-        console.log(`Failed to get valid results for ${fullUrl} after retries.`);
+        console.log(`Failed to get results for ${fullUrl}`);
       }
     }
 
