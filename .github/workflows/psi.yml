@@ -1,0 +1,84 @@
+name: psi
+on:
+  pull_request:
+    branches:
+      - main
+    types: [opened, edited, reopened, synchronize]
+
+jobs:
+  extract-html-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract HTML file differences
+        id: extract_diff
+        run: |
+          # mainブランチとの差分から.htmlファイルだけを抽出
+          HTML_FILES=$(git diff --name-only origin/main HEAD | grep '\.html$' || echo "")
+
+          # 結果を出力
+          if [ -z "$HTML_FILES" ]; then
+            echo "No HTML files changed"
+          else
+            echo "HTML files changed:"
+            echo "$HTML_FILES"
+            # GitHub Actionsの出力変数にセット
+            echo "html_files<<EOF" >> $GITHUB_ENV
+            echo "$HTML_FILES" >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+          fi
+
+          # 変更があったHTMLファイルの数をカウント
+          HTML_COUNT=$(echo "$HTML_FILES" | grep -v '^$' | wc -l)
+          echo "html_count=$HTML_COUNT" >> $GITHUB_ENV
+
+      - name: Use HTML files in next steps
+        run: |
+          echo "Number of HTML files changed: ${{ env.html_count }}"
+
+          # 変更されたHTMLファイルに対して何か処理をする例
+          if [ "${{ env.html_count }}" -gt 0 ]; then
+            echo "Processing changed HTML files:"
+            echo "${{ env.html_files }}"
+
+            # ここで変更されたHTMLファイルに対して追加の処理を行う
+            # 例: ファイル一覧をテキストファイルに保存
+            echo "${{ env.html_files }}" > changed_html_files.txt
+          fi
+
+  check_psi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'yarn'
+      - run: yarn
+      - name: Check PSI
+        env:
+          PSI_API_KEY: ${{secrets.PSI_API_KEY}}
+          HTML_FILES: ${{ env.html_files }} # html_files環境変数を渡す
+          # SLACK_APP_TOKEN: ${{secrets.SLACK_APP_TOKEN}}
+          # SLACK_CHANNEL_ID: ${{secrets.SLACK_CHANNEL_ID}}
+        id: psi_check
+        run: |
+          echo "HTML_FILES: ${{ env.HTML_FILES }}"
+          RESULT=$(node .github/actions/psi)
+          echo "result<<EOF" >> $GITHUB_OUTPUT
+          echo "$RESULT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Comment PR with PSI results
+        uses: github-community/ Pull-Request-Comment Action@v2
+        with:
+          body: |
+            ## PageSpeed Insights Results
+
+            ${{ steps.psi_check.outputs.result }}
+          # if: ${{ steps.psi_check.outcome == 'success' }} # 必要に応じて成功時のみコメント
