@@ -1,6 +1,7 @@
 // PageSpeed Insights APIを呼び出すためのURLを作成
-const PSI_API_KEY = process.env.PSI_API_KEY;
-const BASE_URL = process.env.BASE_URL || 'https://piapiapia.xsrv.jp/test/molak.jp'; // 環境変数から取得
+const PSI_API_KEY = "AIzaSyDPYYkBQQcND0Gj38ynQ8CcSHxy18TQ9ik";
+const BASE_URL = process.env.BASE_URL || 'https://piapiapia.xsrv.jp/test/molak.jp';
+const htmlFilesEnv = "product/dark_peony.html,product/dazzle_beige.html,product/dazzle_gray.html,product/dazzle_gray_toric.html,product/dollish_brown.html,product/dollish_brown_toric.html,product/dollish_gray.html,product/dream_gray.html,product/melty_mist.html,product/mirror_gray.html";
 
 if (!PSI_API_KEY) {
   console.error('PSI_API_KEY環境変数が設定されていません');
@@ -116,6 +117,42 @@ const getScores = async (url, fileName) => {
 };
 
 /**
+ * リクエストをバッチ処理する関数
+ * @param {Array<string>} files - ファイル名の配列
+ * @return {Array<Object>} 成功した結果の配列
+ */
+async function executeRequestsInBatches(files) {
+  const batchSize = 10;
+  let allResults = [];
+  let failedCount = 0;
+
+  for (let i = 0; i < files.length; i += batchSize) {
+    const batch = files.slice(i, i + batchSize);
+    const promises = batch.map(file => {
+      const fullUrl = `${BASE_URL}/${file.trim()}`;
+      return getScores(fullUrl, file.trim());
+    });
+
+    const results = await Promise.allSettled(promises);
+    console.log(`${i + batch.length}件のリクエスト完了`);
+
+    results.forEach(result => {
+      if (result.status === 'fulfilled' && result.value !== null) {
+        allResults.push(result.value);
+      } else {
+        failedCount++;
+      }
+    });
+  }
+
+  if (failedCount > 0) {
+    console.log(`${failedCount}件のリクエストが失敗しました`);
+  }
+
+  return allResults;
+}
+
+/**
  * メイン処理を実行する関数
  * @return {string} 結果のマークダウン文字列
  */
@@ -124,7 +161,7 @@ async function main() {
     console.log("PSI分析処理開始");
 
     // 環境変数からHTMLファイルのリストを取得
-    const htmlFilesEnv = process.env.HTML_FILES;
+    // const htmlFilesEnv = process.env.HTML_FILES;
 
     if (!htmlFilesEnv) {
       console.log("HTML_FILES環境変数が設定されていません");
@@ -148,27 +185,8 @@ async function main() {
       return "No HTML files changed.";
     }
 
-    // 同時に複数のリクエストを開始
-    console.log("すべてのファイルのPSI分析を開始します");
-    const promises = htmlFiles.map(file => {
-      const fullUrl = `${BASE_URL}/${file.trim()}`;
-      return getScores(fullUrl, file.trim());
-    });
-
-    // 結果を待つ
-    const results = await Promise.allSettled(promises);
-    console.log(`${results.length}件のリクエスト完了`);
-
-    // 成功した結果のみを抽出
-    const successfulResults = results
-      .filter(result => result.status === 'fulfilled' && result.value !== null)
-      .map(result => result.value);
-
-    // 失敗した数を計算
-    const failedCount = results.length - successfulResults.length;
-    if (failedCount > 0) {
-      console.log(`${failedCount}件のリクエストが失敗しました`);
-    }
+    console.log("すべてのファイルのPSI分析を開始します\n");
+    const successfulResults = await executeRequestsInBatches(htmlFiles);
 
     if (successfulResults.length === 0) {
       return "No PageSpeed Insights results obtained.";
