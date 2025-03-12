@@ -64,8 +64,6 @@ jobs:
         with:
           node-version: '18'
 
-      - run: yarn
-
       - name: Check PSI
         env:
           PSI_API_KEY: ${{ secrets.PSI_API_KEY }}
