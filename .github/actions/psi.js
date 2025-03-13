@@ -1,9 +1,9 @@
 // PageSpeed Insights APIを呼び出すためのURLを作成
 const PSI_API_KEY = process.env.PSI_API_KEY;
-// const BASE_URL = process.env.BASE_URL;
+const BASE_URL = process.env.BASE_URL;
 // const htmlFilesEnv = process.env.HTML_FILES;
 // const PSI_API_KEY = "AIzaSyDPYYkBQQcND0Gj38ynQ8CcSHxy18TQ9ik";
-const BASE_URL = process.env.BASE_URL || 'https://piapiapia.xsrv.jp/test/molak.jp';
+// const BASE_URL = process.env.BASE_URL || 'https://piapiapia.xsrv.jp/test/molak.jp';
 const htmlFilesEnv = "product/dark_peony.html,product/dazzle_beige.html,product/dazzle_gray.html,product/dazzle_gray_toric.html,product/dollish_brown.html,product/dollish_brown_toric.html,product/dollish_gray.html,product/dream_gray.html,product/melty_mist.html,product/mirror_gray.html";
 
 if (!PSI_API_KEY) {
@@ -163,12 +163,12 @@ async function main() {
         markdown += `**分析日時**: ${new Date().toISOString()}\n`;
         markdown += `**分析サイト**: ${BASE_URL}\n`;
         markdown += `**分析ファイル数**: ${successfulResults.length}/${htmlFiles.length}\n\n`;
-        markdown += `| Path | Perf | A11Y | BP | SEO | Report URL |\n`;
-        markdown += `| :-- | :--: | :--: | :--: | :--: | :---------- |\n`;
+        markdown += `| Path | Performance | Accessibility | Best Practices | SEO |\n`;
+        markdown += `| :-- | :--: | :--: | :--: | :--: |\n`;
 
         for (const result of successfulResults) {
             const path = result.fileName || getPathFromUrl(result.url) || result.url;
-            markdown += `| [${path}](${result.mobile.url}) | ${scoreWithEmoji(result.mobile.performance)} | ${scoreWithEmoji(result.mobile.accessibility)} | ${scoreWithEmoji(result.mobile.bestPractices)} | ${scoreWithEmoji(result.mobile.seo)} | [レポート](${result.mobile.url}) |\n`;
+            markdown += `| [${path}](${result.mobile.url}){:target="_blank"} | ${scoreWithEmoji(result.mobile.performance)} | ${scoreWithEmoji(result.mobile.accessibility)} | ${scoreWithEmoji(result.mobile.bestPractices)} | ${scoreWithEmoji(result.mobile.seo)} |\n`;
         }
 
         console.log("マークダウンレポート生成完了");
