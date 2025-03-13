@@ -1,10 +1,10 @@
 // PageSpeed Insights APIを呼び出すためのURLを作成
 const PSI_API_KEY = process.env.PSI_API_KEY;
 const BASE_URL = process.env.BASE_URL;
-// const htmlFilesEnv = process.env.HTML_FILES;
+const htmlFilesEnv = process.env.HTML_FILES;
 // const PSI_API_KEY = "AIzaSyDPYYkBQQcND0Gj38ynQ8CcSHxy18TQ9ik";
 // const BASE_URL = process.env.BASE_URL || 'https://piapiapia.xsrv.jp/test/molak.jp';
-const htmlFilesEnv = "product/dark_peony.html,product/dazzle_beige.html,product/dazzle_gray.html,product/dazzle_gray_toric.html,product/dollish_brown.html,product/dollish_brown_toric.html,product/dollish_gray.html,product/dream_gray.html,product/melty_mist.html,product/mirror_gray.html";
+// const htmlFilesEnv = "product/dark_peony.html,product/dazzle_beige.html,product/dazzle_gray.html,product/dazzle_gray_toric.html,product/dollish_brown.html,product/dollish_brown_toric.html,product/dollish_gray.html,product/dream_gray.html,product/melty_mist.html,product/mirror_gray.html";
 
 if (!PSI_API_KEY) {
   console.error('PSI_API_KEY環境変数が設定されていません');
@@ -54,49 +54,35 @@ const getScores = async (url, fileName, numberOfRuns = 3) => {
   const requestUrl = `${psiUrl}&url=${url}&strategy=mobile`;
   const results = [];
 
+  // console.log(`[${fileName}] PSI分析開始: ${url} (${numberOfRuns}回計測)`);
+
   for (let i = 0; i < numberOfRuns; i++) {
     try {
       const resMobile = await fetch(requestUrl);
       if (!resMobile.ok) {
-          throw new Error(`API returned status ${resMobile.status} for mobile: ${await resMobile.text()}`);
+        throw new Error(`API returned status ${resMobile.status} for mobile: ${await resMobile.text()}`);
       }
 
       const dataMobile = await resMobile.json();
       if (!dataMobile.lighthouseResult || !dataMobile.lighthouseResult.categories) {
-          throw new Error('Invalid API response structure for mobile');
+        throw new Error('Invalid API response structure for mobile');
       }
 
-      const categories = dataMobile.lighthouseResult.categories;
-
-      // PerformanceまたはAccessibilityが100でない場合のみ結果を格納
-      if (categories.performance.score * 100 !== 100 && categories.accessibility.score * 100 !== 100) {
-        results.push(categories);
-      } else {
-          console.log(`[${fileName}] ${i + 1}回目の計測はPerformanceまたはAccessibilityが100のためスキップ`);
-      }
-
-
+      results.push(dataMobile.lighthouseResult.categories);
+      // console.log(`[${fileName}] ${i + 1}回目の計測完了`);
     } catch (error) {
-      // エラーが発生した場合でも、処理を継続するために0を追加
-      results.push(0);
+      console.error(`[${fileName}] PageSpeed Insights の実行中にエラーが発生しました (${i + 1}回目): ${url}`, error);
+      // エラーが発生した場合でも、処理を継続するためにnullを追加
+      results.push(null);
     }
   }
 
   // 有効な結果のみをフィルタリング
   const validResults = results.filter(result => result !== null);
 
-  // if (validResults.length === 0) {
-  //   console.error(`[${fileName}] 有効な結果が得られませんでした: ${url}`);
-  //   return null;
-  // }
-
   if (validResults.length === 0) {
     console.error(`[${fileName}] 有効な結果が得られませんでした: ${url}`);
-    return {
-        url,
-        fileName,
-        error: "PerformanceまたはAccessibilityが3回とも100でした",
-    };
+    return null;
   }
 
   // 平均スコアを計算
@@ -122,8 +108,8 @@ const getScores = async (url, fileName, numberOfRuns = 3) => {
   averageScores.seo = Math.round((averageScores.seo / numberOfValidResults) * 100);
 
   // 最初の結果からIDを取得
-  const mobileId = dataMobile.id;
-  const report_mobile_url = `https://pagespeed.web.dev/report?url=${mobileId}`;
+  const mobileId = results[0]?.id;
+  const report_mobile_url = mobileId ? `https://pagespeed.web.dev/report?url=${mobileId}` : null;
 
   return {
     url,
@@ -144,34 +130,34 @@ const getScores = async (url, fileName, numberOfRuns = 3) => {
  * @return {Array<Object>} 成功した結果の配列
  */
 async function executeRequestsInBatches(files) {
-    const batchSize = 5;
-    let allResults = [];
-    let failedCount = 0;
+  const batchSize = 5;
+  let allResults = [];
+  let failedCount = 0;
 
-    for (let i = 0; i < files.length; i += batchSize) {
-        const batch = files.slice(i, i + batchSize);
-        const promises = batch.map(file => {
-            const fullUrl = `${BASE_URL}/${file.trim()}`;
-            return getScores(fullUrl, file.trim());
-        });
+  for (let i = 0; i < files.length; i += batchSize) {
+    const batch = files.slice(i, i + batchSize);
+    const promises = batch.map(file => {
+      const fullUrl = `${BASE_URL}/${file.trim()}`;
+      return getScores(fullUrl, file.trim());
+    });
 
-        const results = await Promise.allSettled(promises);
-        console.log(`${i + batch.length}件のリクエスト完了`);
+    const results = await Promise.allSettled(promises);
+    // console.log(`${i + batch.length}件のリクエスト完了`);
 
-        results.forEach(result => {
-            if (result.status === 'fulfilled' && result.value !== null) {
-                allResults.push(result.value);
-            } else {
-                failedCount++;
-            }
-        });
-    }
+    results.forEach(result => {
+      if (result.status === 'fulfilled' && result.value !== null) {
+        allResults.push(result.value);
+      } else {
+        failedCount++;
+      }
+    });
+  }
 
-    if (failedCount > 0) {
-        console.log(`${failedCount}件のリクエストが失敗しました`);
-    }
+  if (failedCount > 0) {
+    console.log(`${failedCount}件のリクエストが失敗しました`);
+  }
 
-    return allResults;
+  return allResults;
 }
 
 /**
@@ -211,11 +197,11 @@ async function main() {
     markdown += `| :-- | :--: | :--: | :--: | :--: |\n`;
 
     for (const result of successfulResults) {
-      const path = result.fileName || getPathFromUrl(result.url) || result.url;
-      markdown += `| [${path}](${result.mobile.url}) | ${scoreWithEmoji(result.mobile.performance)} | ${scoreWithEmoji(result.mobile.accessibility)} | ${scoreWithEmoji(result.mobile.bestPractices)} | ${scoreWithEmoji(result.mobile.seo)} |\n`;
+        const path = result.fileName || getPathFromUrl(result.url) || result.url;
+        markdown += `| [${path}](${result.mobile.url}) | ${scoreWithEmoji(result.mobile.performance)} | ${scoreWithEmoji(result.mobile.accessibility)} | ${scoreWithEmoji(result.mobile.bestPractices)} | ${scoreWithEmoji(result.mobile.seo)} |\n`;
     }
 
-    console.log("マークダウンレポート生成完了");
+    // console.log("マークダウンレポート生成完了");
     return markdown;
   } catch (err) {
     console.error("予期しないエラーが発生しました:", err);
