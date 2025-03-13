@@ -108,8 +108,8 @@ const getScores = async (url, fileName, numberOfRuns = 3) => {
   averageScores.seo = Math.round((averageScores.seo / numberOfValidResults) * 100);
 
   // 最初の結果からIDを取得
-  const mobileId = results[0]?.id;
-  const report_mobile_url = mobileId ? `https://pagespeed.web.dev/report?url=${mobileId}` : null;
+  const mobileId = results.id;
+  const report_mobile_url = `https://pagespeed.web.dev/report?url=${mobileId}`;
 
   return {
     url,
@@ -190,7 +190,7 @@ async function main() {
     }
 
     let markdown = `## PageSpeed Insights 結果 (Mobile - 平均値)\n\n`;
-    markdown += `**分析日時**: ${new Date().toISOString()}\n`;
+    markdown += `**分析日時**: ${new Date().toLocaleString('ja-JP', { timeZone: 'Asia/Tokyo' })}\n`;
     markdown += `**分析サイト**: ${BASE_URL}\n`;
     markdown += `**分析ファイル数**: ${successfulResults.length}/${htmlFiles.length}\n\n`;
     markdown += `| Path | Performance | Accessibility | Best Practices | SEO |\n`;
