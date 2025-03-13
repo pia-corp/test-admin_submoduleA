@@ -44,54 +44,84 @@ function getPathFromUrl(url) {
 }
 
 /**
- * 指定したURLに対してPageSpeed Insightsを実行する関数
+ * 指定したURLに対してPageSpeed Insightsを実行し、平均スコアを計算する関数
  * @param {string} url - 分析するURL
  * @param {string} fileName - 元のファイル名（ログ用）
- * @return {Object|null} 分析結果またはエラー時はnull
+ * @param {number} numberOfRuns - 計測回数
+ * @return {Object|null} 平均分析結果またはエラー時はnull
  */
-const getScores = async (url, fileName) => {
-    const requestUrl = `${psiUrl}&url=${url}`;
-    const requestUrlForMobile = `${requestUrl}&strategy=mobile`;
+const getScores = async (url, fileName, numberOfRuns = 3) => {
+    const requestUrl = `${psiUrl}&url=${url}&strategy=mobile`;
+    const results = [];
 
-    try {
-        const resMobile = await fetch(requestUrlForMobile);
-        if (!resMobile.ok) {
-            throw new Error(`API returned status ${resMobile.status} for mobile: ${await resMobile.text()}`);
-        }
+    console.log(`[${fileName}] PSI分析開始: ${url} (${numberOfRuns}回計測)`);
 
-        const dataMobile = await resMobile.json();
-        if (!dataMobile.lighthouseResult || !dataMobile.lighthouseResult.categories) {
-            throw new Error('Invalid API response structure for mobile');
-        }
-
-        console.log(`[${fileName}] モバイル結果取得完了`);
-
-        const { categories } = dataMobile.lighthouseResult;
-
-        // レスポンスからidを取得
-        const mobileId = dataMobile.id;
-        const report_mobile_url = `https://pagespeed.web.dev/report?url=${mobileId}`;
-
-        if (!mobileId) {
-            console.error(`[${fileName}] レスポンスからIDを取得できませんでした: ${url}`);
-            return null;
-        }
-
-        return {
-            url,
-            fileName,
-            mobile: {
-                performance: Math.round(categories.performance.score * 100),
-                accessibility: Math.round(categories.accessibility.score * 100),
-                bestPractices: Math.round(categories['best-practices'].score * 100),
-                seo: Math.round(categories.seo.score * 100),
-                url: report_mobile_url
+    for (let i = 0; i < numberOfRuns; i++) {
+        try {
+            const resMobile = await fetch(requestUrl);
+            if (!resMobile.ok) {
+                throw new Error(`API returned status ${resMobile.status} for mobile: ${await resMobile.text()}`);
             }
-        };
-    } catch (error) {
-        console.error(`[${fileName}] PageSpeed Insights の実行中にエラーが発生しました: ${url}`, error);
+
+            const dataMobile = await resMobile.json();
+            if (!dataMobile.lighthouseResult || !dataMobile.lighthouseResult.categories) {
+                throw new Error('Invalid API response structure for mobile');
+            }
+
+            results.push(dataMobile.lighthouseResult.categories);
+            console.log(`[${fileName}] ${i + 1}回目の計測完了`);
+        } catch (error) {
+            console.error(`[${fileName}] PageSpeed Insights の実行中にエラーが発生しました (${i + 1}回目): ${url}`, error);
+            // エラーが発生した場合でも、処理を継続するためにnullを追加
+            results.push(null);
+        }
+    }
+
+    // 有効な結果のみをフィルタリング
+    const validResults = results.filter(result => result !== null);
+
+    if (validResults.length === 0) {
+        console.error(`[${fileName}] 有効な結果が得られませんでした: ${url}`);
         return null;
     }
+
+    // 平均スコアを計算
+    const averageScores = {
+        performance: 0,
+        accessibility: 0,
+        bestPractices: 0,
+        seo: 0,
+    };
+
+    validResults.forEach(categories => {
+        averageScores.performance += categories.performance.score;
+        averageScores.accessibility += categories.accessibility.score;
+        averageScores.bestPractices += categories['best-practices'].score;
+        averageScores.seo += categories.seo.score;
+    });
+
+    // 平均値を計算
+    const numberOfValidResults = validResults.length;
+    averageScores.performance = Math.round((averageScores.performance / numberOfValidResults) * 100);
+    averageScores.accessibility = Math.round((averageScores.accessibility / numberOfValidResults) * 100);
+    averageScores.bestPractices = Math.round((averageScores.bestPractices / numberOfValidResults) * 100);
+    averageScores.seo = Math.round((averageScores.seo / numberOfValidResults) * 100);
+
+    // 最初の結果からIDを取得
+    const mobileId = results[0]?.id;
+    const report_mobile_url = mobileId ? `https://pagespeed.web.dev/report?url=${mobileId}` : null;
+
+    return {
+        url,
+        fileName,
+        mobile: {
+            performance: averageScores.performance,
+            accessibility: averageScores.accessibility,
+            bestPractices: averageScores.bestPractices,
+            seo: averageScores.seo,
+            url: report_mobile_url,
+        },
+    };
 };
 
 /**
@@ -159,16 +189,16 @@ async function main() {
             return "No PageSpeed Insights results obtained.";
         }
 
-        let markdown = `## PageSpeed Insights 結果 (Mobile)\n\n`;
+        let markdown = `## PageSpeed Insights 結果 (Mobile - 平均値)\n\n`;
         markdown += `**分析日時**: ${new Date().toISOString()}\n`;
         markdown += `**分析サイト**: ${BASE_URL}\n`;
         markdown += `**分析ファイル数**: ${successfulResults.length}/${htmlFiles.length}\n\n`;
-        markdown += `| Path | Performance | Accessibility | Best Practices | SEO |\n`;
-        markdown += `| :-- | :--: | :--: | :--: | :--: |\n`;
+        markdown += `| Path | Perf | A11Y | BP | SEO | Report URL |\n`;
+        markdown += `| :-- | :--: | :--: | :--: | :--: | :---------- |\n`;
 
         for (const result of successfulResults) {
             const path = result.fileName || getPathFromUrl(result.url) || result.url;
-            markdown += `| [${path}](${result.mobile.url}){:target="_blank"} | ${scoreWithEmoji(result.mobile.performance)} | ${scoreWithEmoji(result.mobile.accessibility)} | ${scoreWithEmoji(result.mobile.bestPractices)} | ${scoreWithEmoji(result.mobile.seo)} |\n`;
+            markdown += `| ![${path}](${result.mobile.url}) | ${scoreWithEmoji(result.mobile.performance)} | ${scoreWithEmoji(result.mobile.accessibility)} | ${scoreWithEmoji(result.mobile.bestPractices)} | ${scoreWithEmoji(result.mobile.seo)} | [レポート](${result.mobile.url}) |\n`;
         }
 
         console.log("マークダウンレポート生成完了");
