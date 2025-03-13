@@ -193,12 +193,12 @@ async function main() {
         markdown += `**分析日時**: ${new Date().toISOString()}\n`;
         markdown += `**分析サイト**: ${BASE_URL}\n`;
         markdown += `**分析ファイル数**: ${successfulResults.length}/${htmlFiles.length}\n\n`;
-        markdown += `| Path | Perf | A11Y | BP | SEO | Report URL |\n`;
-        markdown += `| :-- | :--: | :--: | :--: | :--: | :---------- |\n`;
+        markdown += `| Path | Performance | Accessibility | Best Practices | SEO |\n`;
+        markdown += `| :-- | :--: | :--: | :--: | :--: |\n`;
 
         for (const result of successfulResults) {
             const path = result.fileName || getPathFromUrl(result.url) || result.url;
-            markdown += `| ![${path}](${result.mobile.url}) | ${scoreWithEmoji(result.mobile.performance)} | ${scoreWithEmoji(result.mobile.accessibility)} | ${scoreWithEmoji(result.mobile.bestPractices)} | ${scoreWithEmoji(result.mobile.seo)} | [レポート](${result.mobile.url}) |\n`;
+            markdown += `| [${path}](${result.mobile.url}) | ${scoreWithEmoji(result.mobile.performance)} | ${scoreWithEmoji(result.mobile.accessibility)} | ${scoreWithEmoji(result.mobile.bestPractices)} | ${scoreWithEmoji(result.mobile.seo)} |\n`;
         }
 
         console.log("マークダウンレポート生成完了");
