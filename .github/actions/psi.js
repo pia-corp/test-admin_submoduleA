@@ -54,7 +54,7 @@ const getScores = async (url, fileName, numberOfRuns = 3) => {
     const requestUrl = `${psiUrl}&url=${url}&strategy=mobile`;
     const results = [];
 
-    console.log(`[${fileName}] PSI分析開始: ${url} (${numberOfRuns}回計測)`);
+    // console.log(`[${fileName}] PSI分析開始: ${url} (${numberOfRuns}回計測)`);
 
     for (let i = 0; i < numberOfRuns; i++) {
         try {
@@ -69,7 +69,7 @@ const getScores = async (url, fileName, numberOfRuns = 3) => {
             }
 
             results.push(dataMobile.lighthouseResult.categories);
-            console.log(`[${fileName}] ${i + 1}回目の計測完了`);
+            // console.log(`[${fileName}] ${i + 1}回目の計測完了`);
         } catch (error) {
             console.error(`[${fileName}] PageSpeed Insights の実行中にエラーが発生しました (${i + 1}回目): ${url}`, error);
             // エラーが発生した場合でも、処理を継続するためにnullを追加
@@ -108,8 +108,8 @@ const getScores = async (url, fileName, numberOfRuns = 3) => {
     averageScores.seo = Math.round((averageScores.seo / numberOfValidResults) * 100);
 
     // 最初の結果からIDを取得
-    const mobileId = results[0]?.id;
-    const report_mobile_url = mobileId ? `https://pagespeed.web.dev/report?url=${mobileId}` : null;
+    const mobileId = dataMobile.id;
+    const report_mobile_url = `https://pagespeed.web.dev/report?url=${mobileId}`;
 
     return {
         url,
@@ -165,56 +165,56 @@ async function executeRequestsInBatches(files) {
  * @return {string} 結果のマークダウン文字列
  */
 async function main() {
-    try {
-        if (!htmlFilesEnv) {
-            console.log("HTML_FILES環境変数が設定されていません");
-            return "HTML files not provided.";
-        }
-
-        let htmlFiles;
-        if (htmlFilesEnv.includes(',')) {
-            htmlFiles = htmlFilesEnv.split(',').filter(file => file.trim());
-        } else {
-            htmlFiles = htmlFilesEnv.split(/\s+/).filter(file => file.trim());
-        }
-
-        if (htmlFiles.length === 0) {
-            console.log("変更されたHTMLファイルはありません");
-            return "No HTML files changed.";
-        }
-
-        const successfulResults = await executeRequestsInBatches(htmlFiles);
-
-        if (successfulResults.length === 0) {
-            return "No PageSpeed Insights results obtained.";
-        }
-
-        let markdown = `## PageSpeed Insights 結果 (Mobile - 平均値)\n\n`;
-        markdown += `**分析日時**: ${new Date().toISOString()}\n`;
-        markdown += `**分析サイト**: ${BASE_URL}\n`;
-        markdown += `**分析ファイル数**: ${successfulResults.length}/${htmlFiles.length}\n\n`;
-        markdown += `| Path | Performance | Accessibility | Best Practices | SEO |\n`;
-        markdown += `| :-- | :--: | :--: | :--: | :--: |\n`;
-
-        for (const result of successfulResults) {
-            const path = result.fileName || getPathFromUrl(result.url) || result.url;
-            markdown += `| [${path}](${result.mobile.url}) | ${scoreWithEmoji(result.mobile.performance)} | ${scoreWithEmoji(result.mobile.accessibility)} | ${scoreWithEmoji(result.mobile.bestPractices)} | ${scoreWithEmoji(result.mobile.seo)} |\n`;
-        }
-
-        console.log("マークダウンレポート生成完了");
-        return markdown;
-    } catch (err) {
-        console.error("予期しないエラーが発生しました:", err);
-        return `Error occurred: ${err.message}`;
+  try {
+    if (!htmlFilesEnv) {
+      console.log("HTML_FILES環境変数が設定されていません");
+      return "HTML files not provided.";
     }
+
+    let htmlFiles;
+    if (htmlFilesEnv.includes(',')) {
+      htmlFiles = htmlFilesEnv.split(',').filter(file => file.trim());
+    } else {
+      htmlFiles = htmlFilesEnv.split(/\s+/).filter(file => file.trim());
+    }
+
+    if (htmlFiles.length === 0) {
+      console.log("変更されたHTMLファイルはありません");
+      return "No HTML files changed.";
+    }
+
+    const successfulResults = await executeRequestsInBatches(htmlFiles);
+
+    if (successfulResults.length === 0) {
+      return "No PageSpeed Insights results obtained.";
+    }
+
+    let markdown = `## PageSpeed Insights 結果 (Mobile - 平均値)\n\n`;
+    markdown += `**分析日時**: ${new Date().toISOString()}\n`;
+    markdown += `**分析サイト**: ${BASE_URL}\n`;
+    markdown += `**分析ファイル数**: ${successfulResults.length}/${htmlFiles.length}\n\n`;
+    markdown += `| Path | Performance | Accessibility | Best Practices | SEO |\n`;
+    markdown += `| :-- | :--: | :--: | :--: | :--: |\n`;
+
+    for (const result of successfulResults) {
+      const path = result.fileName || getPathFromUrl(result.url) || result.url;
+      markdown += `| ![${path}](${result.mobile.url}) | ${scoreWithEmoji(result.mobile.performance)} | ${scoreWithEmoji(result.mobile.accessibility)} | ${scoreWithEmoji(result.mobile.bestPractices)} | ${scoreWithEmoji(result.mobile.seo)} |\n`;
+    }
+
+    // console.log("マークダウンレポート生成完了");
+    return markdown;
+  } catch (err) {
+    console.error("予期しないエラーが発生しました:", err);
+    return `Error occurred: ${err.message}`;
+  }
 }
 
 // メイン処理を実行
 main().then(result => {
-    // GitHub Actions用に出力
-    process.stdout.write(result);
-    process.exit(0);
+  // GitHub Actions用に出力
+  process.stdout.write(result);
+  process.exit(0);
 }).catch(error => {
-    console.error(error);
-    process.exit(1);
+  console.error(error);
+  process.exit(1);
 });
