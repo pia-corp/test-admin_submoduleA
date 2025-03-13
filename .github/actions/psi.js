@@ -77,18 +77,18 @@ const getScores = async (url, fileName, numberOfRuns = 3) => {
 
 
     } catch (error) {
-      // エラーが発生した場合でも、処理を継続するためにnullを追加
-      results.push(null);
+      // エラーが発生した場合でも、処理を継続するために0を追加
+      results.push(0);
     }
   }
 
   // 有効な結果のみをフィルタリング
   const validResults = results.filter(result => result !== null);
 
-  if (validResults.length === 0) {
-    console.error(`[${fileName}] 有効な結果が得られませんでした: ${url}`);
-    return null;
-  }
+  // if (validResults.length === 0) {
+  //   console.error(`[${fileName}] 有効な結果が得られませんでした: ${url}`);
+  //   return null;
+  // }
 
   if (validResults.length === 0) {
     console.error(`[${fileName}] 有効な結果が得られませんでした: ${url}`);
