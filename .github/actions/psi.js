@@ -1,7 +1,6 @@
 // PageSpeed Insights APIを呼び出すためのURLを作成
-// const PSI_API_KEY = process.env.PSI_API_KEY;
+const PSI_API_KEY = process.env.PSI_API_KEY;
 // const BASE_URL = process.env.BASE_URL;
-const PSI_API_KEY = "AIzaSyDPYYkBQQcND0Gj38ynQ8CcSHxy18TQ9ik";
 const BASE_URL = process.env.BASE_URL || 'https://piapiapia.xsrv.jp/test/molak.jp';
 const htmlFilesEnv = "product/dark_peony.html,product/dazzle_beige.html,product/dazzle_gray.html,product/dazzle_gray_toric.html,product/dollish_brown.html,product/dollish_brown_toric.html,product/dollish_gray.html,product/dream_gray.html,product/melty_mist.html,product/mirror_gray.html";
 
@@ -22,12 +21,10 @@ const psiUrl = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?key=$
 const scoreWithEmoji = (score) => {
   if (score >= 90) {
     return `:green_circle: ${score}`;
-  } else if (score >= 70) {
-    return `:orange_circle: ${score}`;
   } else if (score >= 50) {
-    return `:yelloew_circle: ${score}`;
+    return `:orange_circle: ${score}`;
   } else {
-    return `:warning: ${score}`;
+    return `:red_circle: ${score}`;
   }
 };
 
@@ -223,7 +220,7 @@ async function main() {
 
     for (const result of successfulResults) {
       const path = result.fileName || getPathFromUrl(result.url) || result.url;
-      markdown += `| (${path})[${result.mobile.url}] | M | ${scoreWithEmoji(result.mobile.performance)} | ${scoreWithEmoji(result.mobile.accessibility)} | ${scoreWithEmoji(result.mobile.bestPractices)} | ${scoreWithEmoji(result.mobile.seo)} | D | ${scoreWithEmoji(result.desktop.performance)} | ${scoreWithEmoji(result.desktop.accessibility)} | ${scoreWithEmoji(result.desktop.bestPractices)} | ${scoreWithEmoji(result.desktop.seo)} |\n`;
+      markdown += `| [${path}](${result.mobile.url}) | M | ${scoreWithEmoji(result.mobile.performance)} | ${scoreWithEmoji(result.mobile.accessibility)} | ${scoreWithEmoji(result.mobile.bestPractices)} | ${scoreWithEmoji(result.mobile.seo)} | D | ${scoreWithEmoji(result.desktop.performance)} | ${scoreWithEmoji(result.desktop.accessibility)} | ${scoreWithEmoji(result.desktop.bestPractices)} | ${scoreWithEmoji(result.desktop.seo)} |\n`;
     }
 
     console.log("マークダウンレポート生成完了");
