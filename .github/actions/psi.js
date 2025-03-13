@@ -1,9 +1,11 @@
 // PageSpeed Insights APIを呼び出すためのURLを作成
-// const PSI_API_KEY = "AIzaSyDPYYkBQQcND0Gj38ynQ8CcSHxy18TQ9ik";
-const PSI_API_KEY = process.env.PSI_API_KEY;
-const BASE_URL = process.env.BASE_URL;
-// const BASE_URL = process.env.BASE_URL || 'https://piapiapia.xsrv.jp/test/molak.jp';
-// const htmlFilesEnv = "product/dark_peony.html,product/dazzle_beige.html,product/dazzle_gray.html,product/dazzle_gray_toric.html,product/dollish_brown.html,product/dollish_brown_toric.html,product/dollish_gray.html,product/dream_gray.html,product/melty_mist.html,product/mirror_gray.html";
+// const PSI_API_KEY = process.env.PSI_API_KEY;
+// const BASE_URL = process.env.BASE_URL;
+const PSI_API_KEY = "AIzaSyDPYYkBQQcND0Gj38ynQ8CcSHxy18TQ9ik";
+const BASE_URL = process.env.BASE_URL || 'https://piapiapia.xsrv.jp/test/molak.jp';
+const htmlFilesEnv = "product/dark_peony.html,product/dazzle_beige.html,product/dazzle_gray.html,product/dazzle_gray_toric.html,product/dollish_brown.html,product/dollish_brown_toric.html,product/dollish_gray.html,product/dream_gray.html,product/melty_mist.html,product/mirror_gray.html";
+
+// https://pagespeed.web.dev/report?url=<分析されたページのURL>
 
 if (!PSI_API_KEY) {
   console.error('PSI_API_KEY環境変数が設定されていません');
@@ -23,7 +25,7 @@ const scoreWithEmoji = (score) => {
   } else if (score >= 70) {
     return `:orange_circle: ${score}`;
   } else if (score >= 50) {
-    return `:red_circle: ${score}`;
+    return `:yelloew_circle: ${score}`;
   } else {
     return `:warning: ${score}`;
   }
@@ -53,7 +55,8 @@ function getPathFromUrl(url) {
 const getScores = async (url, fileName) => {
   // console.log(`[${fileName}] PSI分析開始: ${url}`);
 
-  const requestUrl = `${psiUrl}&url=${encodeURIComponent(url)}`;
+  const requestUrl = `${psiUrl}&url=${url}`;
+  // const requestUrl = `${psiUrl}&url=${encodeURIComponent(url)}`;
   const requestUrlForMobile = `${requestUrl}&strategy=mobile`;
   const requestUrlForDesktop = `${requestUrl}&strategy=desktop`;
 
@@ -98,6 +101,17 @@ const getScores = async (url, fileName) => {
     const { categories } = dataMobile.lighthouseResult;
     const { categories: categoriesDesktop } = dataDesktop.lighthouseResult;
 
+    // レスポンスからidを取得
+    const mobileId = dataMobile.id;
+    const desktopId = dataDesktop.id;
+    const report_mobile_url = `https://pagespeed.web.dev/report?url=${mobileId}`;
+    const report_desktop_url = `https://pagespeed.web.dev/report?url=${desktopId}`;
+
+    if (!mobileId || !desktopId) {
+      console.error(`[${fileName}] レスポンスからIDを取得できませんでした: ${url}`);
+      return null;
+    }
+
     return {
       url,
       fileName,
@@ -106,12 +120,14 @@ const getScores = async (url, fileName) => {
         accessibility: Math.round(categories.accessibility.score * 100),
         bestPractices: Math.round(categories['best-practices'].score * 100),
         seo: Math.round(categories.seo.score * 100),
+        url: report_mobile_url
       },
       desktop: {
         performance: Math.round(categoriesDesktop.performance.score * 100),
         accessibility: Math.round(categoriesDesktop.accessibility.score * 100),
         bestPractices: Math.round(categoriesDesktop['best-practices'].score * 100),
         seo: Math.round(categoriesDesktop.seo.score * 100),
+        url: report_desktop_url
       },
     };
   } catch (error) {
@@ -126,7 +142,7 @@ const getScores = async (url, fileName) => {
  * @return {Array<Object>} 成功した結果の配列
  */
 async function executeRequestsInBatches(files) {
-  const batchSize = 1;
+  const batchSize = 5;
   let allResults = [];
   let failedCount = 0;
 
@@ -166,7 +182,7 @@ async function main() {
     // console.log("PSI分析処理開始");
 
     // 環境変数からHTMLファイルのリストを取得
-    const htmlFilesEnv = process.env.HTML_FILES;
+    // const htmlFilesEnv = process.env.HTML_FILES;
 
     if (!htmlFilesEnv) {
       console.log("HTML_FILES環境変数が設定されていません");
@@ -207,7 +223,7 @@ async function main() {
 
     for (const result of successfulResults) {
       const path = result.fileName || getPathFromUrl(result.url) || result.url;
-      markdown += `| ${path} | M | ${scoreWithEmoji(result.mobile.performance)} | ${scoreWithEmoji(result.mobile.accessibility)} | ${scoreWithEmoji(result.mobile.bestPractices)} | ${scoreWithEmoji(result.mobile.seo)} | D | ${scoreWithEmoji(result.desktop.performance)} | ${scoreWithEmoji(result.desktop.accessibility)} | ${scoreWithEmoji(result.desktop.bestPractices)} | ${scoreWithEmoji(result.desktop.seo)} |\n`;
+      markdown += `| (${path})[${result.mobile.url}] | M | ${scoreWithEmoji(result.mobile.performance)} | ${scoreWithEmoji(result.mobile.accessibility)} | ${scoreWithEmoji(result.mobile.bestPractices)} | ${scoreWithEmoji(result.mobile.seo)} | D | ${scoreWithEmoji(result.desktop.performance)} | ${scoreWithEmoji(result.desktop.accessibility)} | ${scoreWithEmoji(result.desktop.bestPractices)} | ${scoreWithEmoji(result.desktop.seo)} |\n`;
     }
 
     console.log("マークダウンレポート生成完了");
