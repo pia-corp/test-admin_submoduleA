@@ -3,7 +3,7 @@ const PSI_API_KEY = process.env.PSI_API_KEY;
 const BASE_URL = process.env.BASE_URL;
 const htmlFilesEnv = process.env.HTML_FILES;
 // const PSI_API_KEY = "AIzaSyDPYYkBQQcND0Gj38ynQ8CcSHxy18TQ9ik";
-// const BASE_URL = process.env.BASE_URL || 'https://piapiapia.xsrv.jp/test/molak.jp';
+// const BASE_URL = 'https://piapiapia.xsrv.jp/test/molak.jp';
 // const htmlFilesEnv = "product/dark_peony.html,product/dazzle_beige.html,product/dazzle_gray.html,product/dazzle_gray_toric.html,product/dollish_brown.html,product/dollish_brown_toric.html,product/dollish_gray.html,product/dream_gray.html,product/melty_mist.html,product/mirror_gray.html";
 
 if (!PSI_API_KEY) {
@@ -108,6 +108,7 @@ const getScores = async (url, fileName, numberOfRuns = 3) => {
   averageScores.seo = Math.round((averageScores.seo / numberOfValidResults) * 100);
 
   // 最初の結果からIDを取得
+  console.log(categories.performance.auditRefs);
   const mobileId = results.id;
   const report_mobile_url = `https://pagespeed.web.dev/report?url=${mobileId}`;
 
@@ -130,7 +131,7 @@ const getScores = async (url, fileName, numberOfRuns = 3) => {
  * @return {Array<Object>} 成功した結果の配列
  */
 async function executeRequestsInBatches(files) {
-  const batchSize = 5;
+  const batchSize = 1;
   let allResults = [];
   let failedCount = 0;
 
@@ -171,7 +172,7 @@ async function main() {
       return "HTML files not provided.";
     }
 
-    let htmlFiles;
+    // let htmlFiles;
     if (htmlFilesEnv.includes(',')) {
       htmlFiles = htmlFilesEnv.split(',').filter(file => file.trim());
     } else {
