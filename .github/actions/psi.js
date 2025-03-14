@@ -5,8 +5,8 @@ const HTML_FILES_ENV = process.env.HTML_FILES;
 // const PSI_API_KEY = "AIzaSyDPYYkBQQcND0Gj38ynQ8CcSHxy18TQ9ik";
 // const BASE_URL = 'https://piapiapia.xsrv.jp/test/molak.jp';
 // const htmlFilesEnv = "product/dark_peony.html,product/dazzle_beige.html,product/dazzle_gray.html,product/dazzle_gray_toric.html,product/dollish_brown.html,product/dollish_brown_toric.html,product/dollish_gray.html,product/dream_gray.html,product/melty_mist.html,product/mirror_gray.html";
-const NUMBER_OF_RUNS = 3; // 計測回数
-const BATCH_SIZE = 1; // バッチサイズ
+const NUMBER_OF_RUNS = 1; // 計測回数
+const BATCH_SIZE = 5; // バッチサイズ
 
 if (!PSI_API_KEY) {
   console.error('PSI_API_KEY環境変数が設定されていません');
