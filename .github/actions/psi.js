@@ -62,8 +62,6 @@ const getScores = async (url, fileName, numberOfRuns = NUMBER_OF_RUNS) => {
   };
   let validResultCount = 0;
 
-  // console.log(`[${fileName}] PSI分析開始: ${url} (${numberOfRuns}回計測)`);
-
   for (let i = 0; i < numberOfRuns; i++) {
     try {
       const resMobile = await fetch(requestUrl);
@@ -138,24 +136,46 @@ async function executeRequestsInBatches(files, batchSize = BATCH_SIZE) {
   let allResults = [];
   let failedCount = 0;
 
-  for (let i = 0; i < files.length; i += batchSize) {
-    const batch = files.slice(i, i + batchSize);
-    const promises = batch.map((file) => {
-      const fullUrl = `${BASE_URL}/${file.trim()}`;
-      return getScores(fullUrl, file.trim());
-    });
+  // 1秒間の遅延関数
+  const delay = () => new Promise((resolve) => setTimeout(resolve, 1000));
 
-    const results = await Promise.allSettled(promises);
-    // console.log(`${i + batch.length}件のリクエスト完了`);
+  for (const file of files) {
+    const fullUrl = `${BASE_URL}/${file.trim()}`;
+    console.log(`[処理開始] ${file.trim()}: ${fullUrl}`); // 処理開始をログ出力
 
-    results.forEach((result) => {
-      if (result.status === 'fulfilled' && result.value !== null) {
-        allResults.push(result.value);
+    try {
+      const result = await getScores(fullUrl, file.trim());
+      if (result !== null) {
+        allResults.push(result);
       } else {
         failedCount++;
       }
-    });
+    } catch (error) {
+      console.error(`[エラー] ${file.trim()}: ${error}`);
+      failedCount++;
+    }
+
+    await delay(); // 1秒遅延
+    console.log(`[処理完了] ${file.trim()}`); // 処理完了をログ出力
   }
+
+  // for (let i = 0; i < files.length; i += batchSize) {
+  //   const batch = files.slice(i, i + batchSize);
+  //   const promises = batch.map((file) => {
+  //     const fullUrl = `${BASE_URL}/${file.trim()}`;
+  //     return getScores(fullUrl, file.trim());
+  //   });
+
+  //   const results = await Promise.allSettled(promises);
+
+  //   results.forEach((result) => {
+  //     if (result.status === 'fulfilled' && result.value !== null) {
+  //       allResults.push(result.value);
+  //     } else {
+  //       failedCount++;
+  //     }
+  //   });
+  // }
 
   if (failedCount > 0) {
     console.log(`${failedCount}件のリクエストが失敗しました`);
