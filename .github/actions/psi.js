@@ -154,7 +154,7 @@ async function executeRequestsInBatches(files) {
       failedCount++;
     }
 
-    console.log(`[処理完了] ${result.mobile.performance}`);
+    console.log(`[処理完了] ${result}`);
     console.log(`[処理完了] ${file.trim()}`);
   };
 
