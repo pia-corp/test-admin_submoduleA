@@ -4,7 +4,7 @@ const BASE_URL = process.env.BASE_URL;
 const HTML_FILES_ENV = process.env.HTML_FILES;
 // const PSI_API_KEY = "AIzaSyDPYYkBQQcND0Gj38ynQ8CcSHxy18TQ9ik";
 // const BASE_URL = 'https://piapiapia.xsrv.jp/test/molak.jp';
-// const htmlFilesEnv = "product/dark_peony.html,product/dazzle_beige.html,product/dazzle_gray.html,product/dazzle_gray_toric.html,product/dollish_brown.html,product/dollish_brown_toric.html,product/dollish_gray.html,product/dream_gray.html,product/melty_mist.html,product/mirror_gray.html";
+const htmlFilesEnv = "product/dark_peony.html,product/dazzle_beige.html,product/dazzle_gray.html,product/dazzle_gray_toric.html,product/dollish_brown.html,product/dollish_brown_toric.html,product/dollish_gray.html,product/dream_gray.html,product/melty_mist.html,product/mirror_gray.html";
 const NUMBER_OF_RUNS = 1; // 計測回数
 const BATCH_SIZE = 5; // バッチサイズ
 
@@ -128,61 +128,99 @@ const getScores = async (url, fileName, numberOfRuns = NUMBER_OF_RUNS) => {
 };
 
 /**
- * リクエストをバッチ処理する関数
+ * リクエストを1秒ごとに1ファイルずつ処理し、結果を待たずに次のAPI通信を実行する関数
  * @param {Array<string>} files - ファイル名の配列
- * @return {Array<Object>} 成功した結果の配列
+ * @return {Promise<void>}
  */
-async function executeRequestsInBatches(files, batchSize = BATCH_SIZE) {
-  let allResults = [];
+async function executeRequestsInBatches(files) {
   let failedCount = 0;
 
   // 1秒間の遅延関数
   const delay = () => new Promise((resolve) => setTimeout(resolve, 1000));
 
-  for (const file of files) {
-    const fullUrl = `${BASE_URL}/${file.trim()}`;
-    console.log(`[処理開始] ${file.trim()}: ${fullUrl}`); // 処理開始をログ出力
+  let promiseChain = Promise.resolve(); // Promiseチェーンの初期化
 
-    try {
-      const result = await getScores(fullUrl, file.trim());
-      if (result !== null) {
-        allResults.push(result);
-      } else {
-        failedCount++;
-      }
-    } catch (error) {
-      console.error(`[エラー] ${file.trim()}: ${error}`);
-      failedCount++;
+  files.forEach((file) => {
+    promiseChain = promiseChain
+      .then(() => {
+        const fullUrl = `${BASE_URL}/${file.trim()}`;
+        console.log(`[処理開始] ${file.trim()}: ${fullUrl}`); // 処理開始をログ出力
+        return getScores(fullUrl, file.trim())
+          .catch((error) => {
+            console.error(`[エラー] ${file.trim()}: ${error}`);
+            failedCount++;
+          })
+          .finally(() => {
+            console.log(`[処理完了] ${file.trim()}`); // 処理完了をログ出力
+          });
+      })
+      .then(delay); // 1秒遅延
+  });
+
+  return promiseChain.then(() => {
+    if (failedCount > 0) {
+      console.log(`${failedCount}件のリクエストが失敗しました`);
     }
-
-    await delay(); // 1秒遅延
-    console.log(`[処理完了] ${file.trim()}`); // 処理完了をログ出力
-  }
-
-  // for (let i = 0; i < files.length; i += batchSize) {
-  //   const batch = files.slice(i, i + batchSize);
-  //   const promises = batch.map((file) => {
-  //     const fullUrl = `${BASE_URL}/${file.trim()}`;
-  //     return getScores(fullUrl, file.trim());
-  //   });
-
-  //   const results = await Promise.allSettled(promises);
-
-  //   results.forEach((result) => {
-  //     if (result.status === 'fulfilled' && result.value !== null) {
-  //       allResults.push(result.value);
-  //     } else {
-  //       failedCount++;
-  //     }
-  //   });
-  // }
-
-  if (failedCount > 0) {
-    console.log(`${failedCount}件のリクエストが失敗しました`);
-  }
-
-  return allResults;
+  });
 }
+
+
+// /**
+//  * リクエストをバッチ処理する関数
+//  * @param {Array<string>} files - ファイル名の配列
+//  * @return {Array<Object>} 成功した結果の配列
+//  */
+// async function executeRequestsInBatches(files, batchSize = BATCH_SIZE) {
+//   let allResults = [];
+//   let failedCount = 0;
+
+//   // 1秒間の遅延関数
+//   const delay = () => new Promise((resolve) => setTimeout(resolve, 1000));
+
+//   for (const file of files) {
+//     const fullUrl = `${BASE_URL}/${file.trim()}`;
+//     console.log(`[処理開始] ${file.trim()}: ${fullUrl}`); // 処理開始をログ出力
+
+//     try {
+//       const result = await getScores(fullUrl, file.trim());
+//       if (result !== null) {
+//         allResults.push(result);
+//       } else {
+//         failedCount++;
+//       }
+//     } catch (error) {
+//       console.error(`[エラー] ${file.trim()}: ${error}`);
+//       failedCount++;
+//     }
+
+//     await delay(); // 1秒遅延
+//     console.log(`[処理完了] ${file.trim()}`); // 処理完了をログ出力
+//   }
+
+//   // for (let i = 0; i < files.length; i += batchSize) {
+//   //   const batch = files.slice(i, i + batchSize);
+//   //   const promises = batch.map((file) => {
+//   //     const fullUrl = `${BASE_URL}/${file.trim()}`;
+//   //     return getScores(fullUrl, file.trim());
+//   //   });
+
+//   //   const results = await Promise.allSettled(promises);
+
+//   //   results.forEach((result) => {
+//   //     if (result.status === 'fulfilled' && result.value !== null) {
+//   //       allResults.push(result.value);
+//   //     } else {
+//   //       failedCount++;
+//   //     }
+//   //   });
+//   // }
+
+//   if (failedCount > 0) {
+//     console.log(`${failedCount}件のリクエストが失敗しました`);
+//   }
+
+//   return allResults;
+// }
 
 /**
  * マークダウン形式の結果を生成する関数
