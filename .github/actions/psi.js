@@ -145,7 +145,8 @@ async function executeRequestsInBatches(files) {
     try {
       const result = await getScores(fullUrl, file.trim());
       if (result) {
-        console.log(`[処理完了] ${result}`);
+        const test = JSON.stringify(result);
+        console.log(`[処理完了] ${test}`);
         results.push(result);
       } else {
         failedCount++;
