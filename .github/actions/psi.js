@@ -11,7 +11,7 @@ if (!PSI_API_KEY) {
   process.exit(1);
 }
 
-const PSI_URL = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?key=${PSI_API_KEY}&category=performance&category=accessibility&category=best-practices&category=seo`;
+const PSI_URL = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?key=${PSI_API_KEY}&category=performance&category=accessibility&category=best-practices&category=seo&ts=${Date.now()}`;
 
 /**
  * スコアに基づいて絵文字を付与する関数
