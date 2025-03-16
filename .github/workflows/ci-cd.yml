@@ -141,10 +141,10 @@ jobs:
 
       - name: Install lftp
         run: sudo apt-get install -y lftp
-        if: steps.extract_diff.outputs.html_files != ''
+        if: steps.extract_html_diff.outputs.html_files != ''
 
       - name: Upload changed files with LFTP
-        if: steps.extract_diff.outputs.html_files != ''
+        if: steps.extract_html_diff.outputs.html_files != ''
         run: |
           # LFTPでの並列転送（差分ファイルのみ）
           lftp -e "
