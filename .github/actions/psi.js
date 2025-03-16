@@ -1,17 +1,14 @@
 // PageSpeed Insights APIを呼び出すためのURLを作成
 const PSI_API_KEY = process.env.PSI_API_KEY;
 const BASE_URL = process.env.BASE_URL;
-// const HTML_FILES_ENV = process.env.HTML_FILES;
-// const PSI_API_KEY = "AIzaSyDPYYkBQQcND0Gj38ynQ8CcSHxy18TQ9ik";
-// const BASE_URL = 'https://piapiapia.xsrv.jp/test/molak.jp';
-const HTML_FILES_ENV = "product/dark_peony.html,product/dazzle_beige.html,product/dazzle_gray.html,product/dazzle_gray_toric.html,product/dollish_brown.html,product/dollish_brown_toric.html,product/dollish_gray.html,product/dream_gray.html,product/melty_mist.html,product/mirror_gray.html";
+const HTML_FILES_ENV = process.env.HTML_FILES;
 
 if (!PSI_API_KEY) {
   console.error('PSI_API_KEY環境変数が設定されていません');
   process.exit(1);
 }
 
-const PSI_URL = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?key=${PSI_API_KEY}&category=performance&category=accessibility&category=best-practices&category=seo&ts=${Date.now()}`;
+const PSI_URL = `https://www.googleapis.com/pagespeedonline/v5/runPagespeed?key=${PSI_API_KEY}&category=performance&category=accessibility&category=best-practices&category=seo&strategy=mobile&ts=${Date.now()}`;
 
 /**
  * スコアに基づいて絵文字を付与する関数
@@ -140,13 +137,11 @@ async function executeRequestsInBatches(files) {
     await new Promise(resolve => setTimeout(resolve, remainingTime));
 
     const fullUrl = `${BASE_URL}/${file.trim()}`;
-    console.log(`[処理開始] ${file.trim()}: ${fullUrl}`);
 
     try {
       const result = await getScores(fullUrl, file.trim());
       if (result) {
         const test = JSON.stringify(result);
-        console.log(`[処理完了] ${test}`);
         results.push(result);
       } else {
         failedCount++;
@@ -155,8 +150,6 @@ async function executeRequestsInBatches(files) {
       console.error(`[エラー] ${file.trim()}: ${error}`);
       failedCount++;
     }
-
-    console.log(`[処理完了] ${file.trim()}`);
   };
 
   const startTime = Date.now();
