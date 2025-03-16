@@ -116,39 +116,27 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: Extract all changed files
-        id: extract_diff
-        run: |
-          # すべての変更ファイルを抽出（publicフォルダ内のみ）
-          ALL_FILES=$(git diff --name-only origin/main HEAD | grep '^public/' | tr '\n' ',' || echo "")
-          # 末尾のカンマを削除
-          ALL_FILES=${ALL_FILES%,}
-
-          echo "all_changed_files=${ALL_FILES}" >> $GITHUB_OUTPUT
-
-          # 変更ファイルリストをファイルに保存（LFTP用）
-          echo "$ALL_FILES" | tr ',' '\n' > changed_files.txt
-
       - name: Extract HTML file differences
         id: extract_html_diff
         run: |
+          git fetch origin || true
           # HTMLファイルのみを抽出
           HTML_FILES=$(git diff --name-only origin/main HEAD | grep -E 'public/.*\.html$' | sed 's#^public/##g' | tr '\n' ',' || echo "")
 
           # 末尾のカンマを削除
           HTML_FILES=${HTML_FILES%,}
 
-          # 結果を出力
-          if [ -z "$HTML_FILES" ]; then
-            echo "No HTML files changed"
-            HTML_COUNT=0
+          # ファイルがある場合、改行をカンマに変換
+          if [ -n "$HTML_FILES" ]; then
+            HTML_FILES=$(echo "$HTML_FILES" | tr '\n' ',')
+            HTML_COUNT=$(echo "$HTML_FILES" | awk -F',' '{print NF}')
           else
-            echo "HTML files changed:"
-            echo "$HTML_FILES"
-            # 変更があったHTMLファイルの数をカウント
-            HTML_COUNT=$(echo "$HTML_FILES" | tr ',' '\n' | wc -l)
+            echo "No HTML files changed"
+            HTML_FILES=""
+            HTML_COUNT=0
           fi
 
+          echo "HTML files changed: $HTML_FILES"
           echo "html_files=${HTML_FILES}" >> $GITHUB_OUTPUT
           echo "html_count=${HTML_COUNT}" >> $GITHUB_OUTPUT
 
