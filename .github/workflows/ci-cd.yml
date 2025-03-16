@@ -41,6 +41,7 @@ jobs:
           echo "HTML files changed: $HTML_FILES"
           echo "html_files=${HTML_FILES}" >> $GITHUB_OUTPUT
           echo "html_count=${HTML_COUNT}" >> $GITHUB_OUTPUT
+          echo "$ALL_FILES" | tr ',' '\n' > changed_files.txt
 
       - name: Install lftp
         run: sudo apt-get install -y lftp
@@ -52,30 +53,42 @@ jobs:
           # 変更されたファイルリストを取得（カンマ区切りを改行区切りに変換）
           CHANGED_FILES=$(echo "${{ steps.extract_html_diff.outputs.html_files }}" | tr ',' '\n')
 
-          # LFTP スクリプトを動的に作成
-          set ftp:ssl-allow false;
+          # LFTPでの並列転送（差分ファイルのみ）
+          lftp -e "
+          set ftp:ssl-allow true;
+          set ssl:verify-certificate false;
           set net:max-retries 3;
           set net:timeout 10;
           set net:reconnect-interval-base 5;
           set net:reconnect-interval-multiplier 1;
           set mirror:parallel-directories true;
-          set mirror:parallel-transfer-count 5;
 
           open -u ${{ secrets.DEVELOPMENT_USER_NAME }},${{ secrets.DEVELOPMENT_PASSWORD }} ${{ secrets.DEVELOPMENT_HOST }};
 
-          cd ${{ vars.DEVELOPMENT_REMOTE_PATH }}/${{ github.repository }}/;
+          # 並列転送設定
+          set mirror:parallel-transfer-count 10;
+          set pget:parallel-transfer-count 5;
 
-          # 変更されたファイルごとに LFTP コマンドを追加
-          while IFS= read -r file; do
-            dir=$(dirname "$file" | sed 's#^public/##g')
-            LFTP_SCRIPT+="
-            mkdir -f \"$dir\";
-            put -O \"$dir\" \"$file\";"
-          done <<< "$CHANGED_FILES"
 
-          # LFTP を実行
-          lftp -e "$LFTP_SCRIPT
-          bye"
+          # changedファイルを並列アップロード
+          cat ../changed_files.txt | while read file; do
+            if [ -f \"\$file\" ]; then
+              dir=\$(dirname \"\$file\" | sed 's#^public/##g')
+              filename=\$(basename \"\$file\")
+              echo \"Uploading \$file to \$dir\";
+
+              # ディレクトリが存在しない場合は作成
+              mkdir -p \"\$dir\" 2>/dev/null || true
+
+              # ファイルをアップロード
+              put -O \"\$dir\" \"\$file\";
+            fi
+          done &
+
+          # 並列ジョブでアップロード完了を待機
+          wait;
+          bye
+          "
 
   check_psi:
     needs: extract-diff-and-deploy
