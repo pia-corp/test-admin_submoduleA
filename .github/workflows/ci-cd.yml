@@ -49,6 +49,9 @@ jobs:
       - name: Upload changed files with LFTP
         if: steps.extract_html_diff.outputs.html_files != ''
         run: |
+          # 変更されたファイルリストを取得（カンマ区切りを改行区切りに変換）
+          CHANGED_FILES=$(echo "${{ steps.extract_html_diff.outputs.html_files }}" | tr ',' '\n')
+
           # LFTP コマンドを実行
           lftp -e "
             set ftp:ssl-allow false;
@@ -64,7 +67,7 @@ jobs:
           cd ${{ vars.DEVELOPMENT_REMOTE_PATH }}/${{ github.repository }}/;
 
           # 変更されたファイルをループ処理
-          $(for file in ${{ steps.extract_html_diff.outputs.html_files }}; do
+          $(for file in CHANGED_FILES; do
               dir=$(dirname "$file" | sed 's#^public/##g')
               filename=$(basename "$file")
               echo "mkdir -f \"$dir\";"
