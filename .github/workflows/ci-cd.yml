@@ -52,28 +52,30 @@ jobs:
           # 変更されたファイルリストを取得（カンマ区切りを改行区切りに変換）
           CHANGED_FILES=$(echo "${{ steps.extract_html_diff.outputs.html_files }}" | tr ',' '\n')
 
-          # LFTP コマンドを実行
-          lftp -e "
-            set ftp:ssl-allow false;
-            set net:max-retries 3;
-            set net:timeout 10;
-            set net:reconnect-interval-base 5;
-            set net:reconnect-interval-multiplier 1;
-            set mirror:parallel-directories true;
-            set mirror:parallel-transfer-count 5;
+          # LFTP スクリプトを動的に作成
+          set ftp:ssl-allow false;
+          set net:max-retries 3;
+          set net:timeout 10;
+          set net:reconnect-interval-base 5;
+          set net:reconnect-interval-multiplier 1;
+          set mirror:parallel-directories true;
+          set mirror:parallel-transfer-count 5;
 
           open -u ${{ secrets.DEVELOPMENT_USER_NAME }},${{ secrets.DEVELOPMENT_PASSWORD }} ${{ secrets.DEVELOPMENT_HOST }};
 
           cd ${{ vars.DEVELOPMENT_REMOTE_PATH }}/${{ github.repository }}/;
 
-          # 変更されたファイルをループ処理
-          $(for file in CHANGED_FILES; do
-              dir=$(dirname "$file" | sed 's#^public/##g')
-              filename=$(basename "$file")
-              echo "mkdir -f \"$dir\";"
-              echo "put -O \"$dir\" \"$file\";"
-          done)
+          # 変更されたファイルごとに LFTP コマンドを追加
+          while IFS= read -r file; do
+            dir=$(dirname "$file" | sed 's#^public/##g')
+            LFTP_SCRIPT+="
+            mkdir -f \"$dir\";
+            put -O \"$dir\" \"$file\";"
+          done <<< "$CHANGED_FILES"
 
+          # LFTP を実行
+          lftp -e "$LFTP_SCRIPT
+          bye"
 
   check_psi:
     needs: extract-diff-and-deploy
