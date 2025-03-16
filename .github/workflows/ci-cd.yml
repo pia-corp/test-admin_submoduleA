@@ -109,7 +109,6 @@ jobs:
     outputs:
       html_files: ${{ steps.extract_html_diff.outputs.html_files }}
       html_count: ${{ steps.extract_html_diff.outputs.html_count }}
-      all_changed_files: ${{ steps.extract_diff.outputs.all_changed_files }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -142,10 +141,10 @@ jobs:
 
       - name: Install lftp
         run: sudo apt-get install -y lftp
-        if: steps.extract_diff.outputs.all_changed_files != ''
+        if: steps.extract_diff.outputs.html_files != ''
 
       - name: Upload changed files with LFTP
-        if: steps.extract_diff.outputs.all_changed_files != ''
+        if: steps.extract_diff.outputs.html_files != ''
         run: |
           # LFTPでの並列転送（差分ファイルのみ）
           lftp -e "
@@ -226,6 +225,7 @@ jobs:
             });
 
   cache-cleanup:
+    needs: extract-diff-and-deploy
     runs-on: ubuntu-latest
     timeout-minutes: 5
     # ワークフローの最後に必ず実行
