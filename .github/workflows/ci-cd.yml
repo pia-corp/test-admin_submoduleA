@@ -51,13 +51,13 @@ jobs:
         run: |
           # 変更されたファイルリストを取得（カンマ区切りを改行区切りに変換）
           CHANGED_FILES=$(echo "${{ steps.extract_html_diff.outputs.html_files }}" | tr ',' '\n')
-          HOST="${{ vars.DEVELOPMENT_HOST }}" \
-          USERNAME="${{ vars.DEVELOPMENT_USER_NAME }}" \
-          PASSWORD="${{ secrets.DEVELOPMENT_PASSWORD }}" \
+          HOST="${{ vars.DEVELOPMENT_HOST }}"
+          USERNAME="${{ vars.DEVELOPMENT_USER_NAME }}"
+          PASSWORD="${{ secrets.DEVELOPMENT_PASSWORD }}"
 
           # ローカルからサーバへデータをアップロードさせたい場合
-          LOCAL="./public/" \
-          REMOTE="${{ vars.DEVELOPMENT_REMOTE_PATH }}${GITHUB_REPOSITORY#${GITHUB_REPOSITORY_OWNER}/}/" \
+          LOCAL="./public/"
+          REMOTE="${{ vars.DEVELOPMENT_REMOTE_PATH }}${GITHUB_REPOSITORY#${GITHUB_REPOSITORY_OWNER}/}/"
 
           # LFTPスクリプトを作成
           LFTP_SCRIPT="
