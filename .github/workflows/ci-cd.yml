@@ -59,7 +59,7 @@ jobs:
           LOCAL="./public/"
           REMOTE="${{ vars.DEVELOPMENT_REMOTE_PATH }}${GITHUB_REPOSITORY#${GITHUB_REPOSITORY_OWNER}/}/"
 
-          # LFTPスクリプトを作成
+          # LFTPスクリプトを作成（アップロード部分のみ）
           LFTP_SCRIPT="
           open -u \"$USERNAME\",\"$PASSWORD\" \"$HOST\"
           set ssl:check-hostname false
@@ -72,8 +72,15 @@ jobs:
             --reverse \
             --include=\"public/*\" \
             \"$LOCAL\" \"$REMOTE\"
+          "
 
-          # フォルダの権限を 775 に、ファイルの権限を 664 に設定
+          # LFTP を実行（アップロード）
+          lftp -c "$LFTP_SCRIPT"
+
+          # アップロード後に権限を変更するためのスクリプト
+          CHMOD_SCRIPT="
+          open -u \"$USERNAME\",\"$PASSWORD\" \"$HOST\"
+          set ssl:check-hostname false
           cd \"$REMOTE\"
           "
 
@@ -81,13 +88,15 @@ jobs:
           while IFS= read -r file; do
             dir=$(dirname "$file")
             filename=$(basename "$file")
-            LFTP_SCRIPT+="
+            CHMOD_SCRIPT+="
+            # フォルダの権限を 775 に設定
             chmod 775 \"$dir\";
+            # ファイルの権限を 664 に設定
             chmod 664 \"$dir/$filename\";"
           done <<< "$CHANGED_FILES"
 
-          # LFTP を実行
-          lftp -c "$LFTP_SCRIPT"
+          # 権限変更スクリプトを実行
+          lftp -c "$CHMOD_SCRIPT"
 
   check_psi:
     needs: extract-diff-and-deploy
