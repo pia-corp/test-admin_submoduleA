@@ -70,7 +70,9 @@ jobs:
 
           # mirror でフォルダとファイルをアップロード
           mirror \
-            --delete \
+            --delete-first \
+            --use-cache \
+            --only-newer \
             --parallel=10 \
             --verbose \
             --reverse \
@@ -101,8 +103,8 @@ jobs:
             # ファイルをアップロード
             put \"$LOCAL$file\" -o \"$remote_file\";
             # 権限設定
-            chmod 775 \"$dir\";
-            chmod 0664 \"$remote_file\";"
+            site chmod 775 \"$dir\";
+            site chmod 664 \"$remote_file\";"
           done <<< "$CHANGED_FILES"
 
           # 権限変更スクリプトを実行
