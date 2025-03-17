@@ -71,14 +71,14 @@ jobs:
           $LOCAL \
           $REMOTE \
 
-          # フォルダの権限を 775 に、ファイルの権限を 664 に設定
-          cd "$REMOTE"
-          $(echo "$CHANGED_FILES" | while IFS= read -r file; do
-            dir=$(dirname "$file" | sed 's#^public/##g')
-            filename=$(basename "$file")
-            echo "chmod 775 \"$dir\";"
-            echo "chmod 664 \"$dir/$filename\";"
-          done)
+          # # フォルダの権限を 775 に、ファイルの権限を 664 に設定
+          # cd "$REMOTE"
+          # $(echo "$CHANGED_FILES" | while IFS= read -r file; do
+          #   dir=$(dirname "$file" | sed 's#^public/##g')
+          #   filename=$(basename "$file")
+          #   echo "chmod 775 \"$dir\";"
+          #   echo "chmod 664 \"$dir/$filename\";"
+          # done)
 
           exit \
           EOF
