@@ -71,7 +71,7 @@ jobs:
             --parallel=10 \
             --verbose \
             --reverse \
-            --include=\"public/*\" \
+            --include=\"public/**/*.\" \
             \"$LOCAL\" \"$REMOTE\"
           "
 
