@@ -65,11 +65,11 @@ jobs:
           # mirror でフォルダとファイルをアップロード
           mirror \
             --delete \
-            --parallel=3 \
+            --parallel=10 \
             --verbose \
             --reverse \
-          $LOCAL \
-          $REMOTE \
+            --include="public/*" \
+          "$LOCAL" "$REMOTE"
 
           cd "$REMOTE"
           EOF
