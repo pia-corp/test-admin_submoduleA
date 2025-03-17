@@ -52,8 +52,8 @@ jobs:
           # 変更されたファイルリストを取得（カンマ区切りを改行区切りに変換）
           CHANGED_FILES=$(echo "${{ steps.extract_html_diff.outputs.html_files }}" | tr ',' '\n')
           HOST="${{ vars.DEVELOPMENT_HOST }}" \
-          USER="${{ vars.DEVELOPMENT_USER_NAME }}" \
-          PASS="${{ secrets.DEVELOPMENT_PASSWORD }}" \
+          USERNAME="${{ vars.DEVELOPMENT_USER_NAME }}" \
+          PASSWORD="${{ secrets.DEVELOPMENT_PASSWORD }}" \
 
           # ローカルからサーバへデータをアップロードさせたい場合
           LOCAL="./public/" \
