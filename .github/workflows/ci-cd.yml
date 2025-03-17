@@ -55,28 +55,39 @@ jobs:
           USER="${{ vars.DEVELOPMENT_USER_NAME }}" \
           PASS="${{ secrets.DEVELOPMENT_PASSWORD }}" \
           LOCAL="./public/" \
-          REMOTE="${{ vars.DEVELOPMENT_REMOTE_PATH }}/${{ github.repository }}/" \
+          REMOTE="${{ vars.DEVELOPMENT_REMOTE_PATH }}/${GITHUB_REPOSITORY#${GITHUB_REPOSITORY_OWNER}/}/" \
+
           # ローカルからサーバへデータをアップロードさせたい場合
-          FROM="$LOCAL"
-          TO="$REMOTE"
           lftp <<EOF
           open -u $USERNAME,$PASSWORD $HOST
           set ssl:check-hostname false
+
+          # mirror でフォルダとファイルをアップロード
           mirror \
-          --dry-run \
-          --delete \
-          --parallel=3 \
-          --verbose \
-          --reverse \
-          $FROM \
-          $TO \
+            --dry-run \
+            --delete \
+            --parallel=3 \
+            --verbose \
+            --reverse \
+          $LOCAL \
+          $REMOTE \
+
+          # フォルダの権限を 775 に、ファイルの権限を 664 に設定
+          cd "$REMOTE"
+          $(echo "$CHANGED_FILES" | while IFS= read -r file; do
+            dir=$(dirname "$file" | sed 's#^public/##g')
+            filename=$(basename "$file")
+            echo "chmod 775 \"$dir\";"
+            echo "chmod 664 \"$dir/$filename\";"
+          done)
+
           exit \
           EOF
 
   check_psi:
     needs: extract-diff-and-deploy
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     if: ${{ needs.extract-diff-and-deploy.outputs.html_count > 0 }}
     steps:
       - uses: actions/checkout@v4
@@ -100,7 +111,7 @@ jobs:
 
       - name: Comment PR with PSI results
         uses: actions/github-script@v7.0.1
-        if: ${{ always() && steps.psi_check.outcome == 'success' }}
+        if: ${{ steps.psi_check.outcome == 'success' }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
@@ -112,34 +123,35 @@ jobs:
               body: result
             });
 
-  cache-cleanup:
-    needs: extract-diff-and-deploy
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
-    # ワークフローの最後に必ず実行
-    if: ${{ always() }}
-    steps:
-      - name: Cleanup
-        run: |
-          # GH CLIのインストール（キャッシュ削除に必要）
-          if ! command -v gh &> /dev/null; then
-            echo "Installing GitHub CLI..."
-            curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-            echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-            sudo apt update
-            sudo apt install gh
-          fi
 
-          # キャッシュ拡張機能のインストール
-          gh extension install actions/gh-actions-cache
+  # cache-cleanup:
+  #   needs: extract-diff-and-deploy
+  #   runs-on: ubuntu-latest
+  #   timeout-minutes: 5
+  #   # ワークフローの最後に必ず実行
+  #   if: ${{ always() }}
+  #   steps:
+  #     - name: Cleanup
+  #       run: |
+  #         # GH CLIのインストール（キャッシュ削除に必要）
+  #         if ! command -v gh &> /dev/null; then
+  #           echo "Installing GitHub CLI..."
+  #           curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
+  #           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
+  #           sudo apt update
+  #           sudo apt install gh
+  #         fi
 
-          set +e
-          echo "Deleting caches..."
-          gh actions-cache list -R $REPO -L 100 | while read -r cacheKey _ branch _
-          do
-            gh actions-cache delete "$cacheKey" -R $REPO -B "$branch" --confirm
-          done
-          echo "Done"
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
+  #         # キャッシュ拡張機能のインストール
+  #         gh extension install actions/gh-actions-cache
+
+  #         set +e
+  #         echo "Deleting caches..."
+  #         gh actions-cache list -R $REPO -L 100 | while read -r cacheKey _ branch _
+  #         do
+  #           gh actions-cache delete "$cacheKey" -R $REPO -B "$branch" --confirm
+  #         done
+  #         echo "Done"
+  #       env:
+  #         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #         REPO: ${{ github.repository }}
