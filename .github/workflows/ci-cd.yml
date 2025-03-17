@@ -71,7 +71,6 @@ jobs:
             --parallel=10 \
             --verbose \
             --reverse \
-            --include=\"public/**/*.\" \
             \"$LOCAL\" \"$REMOTE\"
           "
 
@@ -87,15 +86,17 @@ jobs:
 
           # 変更されたファイルごとに権限設定を追加
           while IFS= read -r file; do
-            # ファイルパスからpublic/プレフィックスを除去し、リモートパスに合わせる
             remote_file="${file#public/}"
             dir=$(dirname "$remote_file")
 
             CHMOD_SCRIPT+="
-            # フォルダの権限を 775 に設定（エラー無視）
-            chmod 775 \"$dir\" || echo \"Directory $dir permission setting skipped\";
-            # ファイルの権限を 664 に設定（エラー無視）
-            chmod 664 \"$remote_file\" || echo \"File $remote_file permission setting skipped\";"
+            # ディレクトリ作成
+            mkdir -p \"$dir\";
+            # ファイルをアップロード
+            put \"$LOCAL$file\" -o \"$remote_file\";
+            # 権限設定
+            chmod 775 \"$dir\";
+            chmod 664 \"$remote_file\";"
           done <<< "$CHANGED_FILES"
 
           # 権限変更スクリプトを実行
