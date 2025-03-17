@@ -55,7 +55,7 @@ jobs:
           USER="${{ vars.DEVELOPMENT_USER_NAME }}" \
           PASS="${{ secrets.DEVELOPMENT_PASSWORD }}" \
           LOCAL="./public/" \
-          REMOTE="${{ vars.DEVELOPMENT_REMOTE_PATH }}/${GITHUB_REPOSITORY#${GITHUB_REPOSITORY_OWNER}/}/" \
+          REMOTE="${{ vars.DEVELOPMENT_REMOTE_PATH }}${GITHUB_REPOSITORY#${GITHUB_REPOSITORY_OWNER}/}/" \
 
           # ローカルからサーバへデータをアップロードさせたい場合
           lftp <<EOF
