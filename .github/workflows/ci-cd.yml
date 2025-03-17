@@ -58,6 +58,7 @@ jobs:
           # ローカルからサーバへデータをアップロードさせたい場合
           LOCAL="./public/"
           REMOTE="${{ vars.DEVELOPMENT_REMOTE_PATH }}${GITHUB_REPOSITORY#${GITHUB_REPOSITORY_OWNER}/}/"
+          echo "$REMOTE"
 
           # LFTPスクリプトを作成（アップロード部分のみ）
           LFTP_SCRIPT="
