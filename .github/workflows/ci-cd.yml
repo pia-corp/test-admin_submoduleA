@@ -49,6 +49,7 @@ jobs:
       - name: Set REMOTE path
         run: echo "REMOTE=$(echo ${GITHUB_REPOSITORY} | cut -d'/' -f2)" >> $GITHUB_ENV
 
+
       - name: Upload changed files with LFTP
         if: steps.extract_html_diff.outputs.html_files != ''
         env:
@@ -57,6 +58,7 @@ jobs:
           FTP_PASSWORD: "${{ secrets.DEVELOPMENT_PASSWORD }}"
           LOCAL: "./public"
         run: |
+          echo "REMOTE: $REMOTE"
           lftp -u "$FTP_USER","$FTP_PASSWORD" "$FTP_HOST" <<EOF
           set net:max-retries 3
           set net:reconnect-interval-base 5
