@@ -69,7 +69,7 @@ jobs:
 
           lftp -c "
             open -u $USERNAME,$PASSWORD $HOST
-            mirror -R --allow-chown --parallel=2 --verbose=3 $LOCAL $REMOTE
+            mirror -R --allow-chown --delete --use-cache --parallel=2 --verbose=3 $LOCAL $REMOTE
           "
 
 
