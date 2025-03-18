@@ -49,65 +49,71 @@ jobs:
       - name: Upload changed files with LFTP
         if: steps.extract_html_diff.outputs.html_files != ''
         run: |
-          # 変更されたファイルリストを取得（カンマ区切りを改行区切りに変換）
-          CHANGED_FILES=$(echo "${{ steps.extract_html_diff.outputs.html_files }}" | tr ',' '\n')
-          HOST="${{ vars.DEVELOPMENT_HOST }}"
-          USERNAME="${{ vars.DEVELOPMENT_USER_NAME }}"
-          PASSWORD="${{ secrets.DEVELOPMENT_PASSWORD }}"
-
-          # ローカルからサーバへデータをアップロードさせたい場合
-          LOCAL="./public/"
-          REMOTE="${{ vars.DEVELOPMENT_REMOTE_PATH }}${GITHUB_REPOSITORY#${GITHUB_REPOSITORY_OWNER}/}/"
-          echo "$REMOTE"
-
-          # LFTPスクリプトを作成（アップロード部分のみ）
-          LFTP_SCRIPT="
-          set net:max-retries 3
-          set net:reconnect-interval-base 5
-          set net:reconnect-interval-max 15
+          lftp -c "
           open -u $USERNAME,$PASSWORD $HOST
-          set ssl:check-hostname false
-
-          # mirror でフォルダとファイルをアップロード
-          mirror -R \
-            --only-newer \
-            --parallel=10 \
-            --verbose \
-            $LOCAL $REMOTE
+          mirror -R --verbose ./public/ $FTP_TARGET_DIR
           "
 
-          # LFTP を実行（アップロード）
-          lftp -c "$LFTP_SCRIPT"
+        # run: |
+        #   # 変更されたファイルリストを取得（カンマ区切りを改行区切りに変換）
+        #   CHANGED_FILES=$(echo "${{ steps.extract_html_diff.outputs.html_files }}" | tr ',' '\n')
+        #   HOST="${{ vars.DEVELOPMENT_HOST }}"
+        #   USERNAME="${{ vars.DEVELOPMENT_USER_NAME }}"
+        #   PASSWORD="${{ secrets.DEVELOPMENT_PASSWORD }}"
 
-          # ディレクトリと通常ファイルの権限を一括で変更する
-          {
-            # すべてのディレクトリを検索して755権限を設定
-            lftp "$SERVER" <<EOF
-            set ssl:check-hostname false
-            cd "$REMOTE"
-            find | grep "/$"
-            quit
-          EOF
-          } | awk '{ printf "chmod 755 \"%s\"\n", $0 }' > /tmp/chmod_dirs.txt
+        #   # ローカルからサーバへデータをアップロードさせたい場合
+        #   LOCAL="./public/"
+        #   REMOTE="${{ vars.DEVELOPMENT_REMOTE_PATH }}${GITHUB_REPOSITORY#${GITHUB_REPOSITORY_OWNER}/}/"
+        #   echo "$REMOTE"
 
-          {
-            # すべてのファイルを検索して664権限を設定
-            lftp "$SERVER" <<EOF
-            set ssl:check-hostname false
-            cd "$REMOTE"
-            find | grep -v "/$"
-            quit
-          EOF
-          } | awk '{ printf "chmod 664 \"%s\"\n", $0 }' > /tmp/chmod_files.txt
+        #   # LFTPスクリプトを作成（アップロード部分のみ）
+        #   LFTP_SCRIPT="
+        #   set net:max-retries 3
+        #   set net:reconnect-interval-base 5
+        #   set net:reconnect-interval-max 15
+        #   open -u $USERNAME,$PASSWORD $HOST
+        #   set ssl:check-hostname false
 
-          # 権限変更コマンドを実行
-          {
-            echo "set ssl:check-hostname false"
-            echo "open $SERVER"
-            echo "cd \"$REMOTE\""
-            cat /tmp/chmod_dirs.txt
-            cat /tmp/chmod_files.txt
-          } | lftp
+        #   # mirror でフォルダとファイルをアップロード
+        #   mirror -R \
+        #     --only-newer \
+        #     --parallel=10 \
+        #     --verbose \
+        #     $LOCAL $REMOTE
+        #   "
+
+        #   # LFTP を実行（アップロード）
+        #   lftp -c "$LFTP_SCRIPT"
+
+        #   # ディレクトリと通常ファイルの権限を一括で変更する
+        #   {
+        #     # すべてのディレクトリを検索して755権限を設定
+        #     lftp "$SERVER" <<EOF
+        #     set ssl:check-hostname false
+        #     cd "$REMOTE"
+        #     find | grep "/$"
+        #     quit
+        #   EOF
+        #   } | awk '{ printf "chmod 755 \"%s\"\n", $0 }' > /tmp/chmod_dirs.txt
+
+        #   {
+        #     # すべてのファイルを検索して664権限を設定
+        #     lftp "$SERVER" <<EOF
+        #     set ssl:check-hostname false
+        #     cd "$REMOTE"
+        #     find | grep -v "/$"
+        #     quit
+        #   EOF
+        #   } | awk '{ printf "chmod 664 \"%s\"\n", $0 }' > /tmp/chmod_files.txt
+
+        #   # 権限変更コマンドを実行
+        #   {
+        #     echo "set ssl:check-hostname false"
+        #     echo "open $SERVER"
+        #     echo "cd \"$REMOTE\""
+        #     cat /tmp/chmod_dirs.txt
+        #     cat /tmp/chmod_files.txt
+        #   } | lftp
 
   check_psi:
     needs: extract-diff-and-deploy
