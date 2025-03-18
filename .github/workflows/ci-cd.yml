@@ -68,7 +68,7 @@ jobs:
           mirror -R --delete --only-newer --use-cache --parallel=10 --verbose=3 "$LOCAL" "$REMOTE"
 
           # ディレクトリの権限を755に変更
-          find "/$REMOTE" -type d -exec chmod 755 {} \;
+          # find "/$REMOTE" -type d -exec chmod 755 {} \;
 
           # ファイルの権限を664に変更
           find "/$REMOTE" -type f -exec chmod 664 {} \;
