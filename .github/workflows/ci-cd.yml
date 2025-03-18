@@ -66,13 +66,10 @@ jobs:
           mirror -R --delete --only-newer --use-cache --parallel=10 --verbose=3 "$LOCAL" "$REMOTE"
 
           # ディレクトリの権限を755に変更
-          cd "/$REPO/"
-          # find "$REMOTE" -type d -exec chmod 755 {} \;
-          ls -R | grep -v /$ | while read file; do chmod 664 "$file"; done
+          find "$REMOTE" -type d -exec chmod 755 {} \;
 
           # ファイルの権限を664に変更
-          # find "$REMOTE" -type f -exec chmod 664 {} \;
-          ls -R | grep /$ | while read dir; do chmod 755 "$dir"; done
+          find "$REMOTE" -type f -exec chmod 664 {} \;
 
           bye
           EOF
@@ -139,74 +136,41 @@ jobs:
         #     cat /tmp/chmod_files.txt
         #   } | lftp
 
-  check_psi:
-    needs: extract-diff-and-deploy
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    if: ${{ needs.extract-diff-and-deploy.outputs.html_count > 0 }}
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4.2.0
-        with:
-          node-version: 'latest'
-
-      - name: Check PSI
-        env:
-          PSI_API_KEY: ${{ secrets.PSI_API_KEY }}
-          BASE_URL: "${{ vars.DEVELOPMENT_REMOTE_PATH }}/${{ github.repository }}/}"
-          HTML_FILES: ${{ needs.extract-diff-and-deploy.outputs.html_files }}
-        id: psi_check
-        run: |
-          echo "HTML_FILES: ${{ needs.extract-diff-and-deploy.outputs.html_files }}"
-          RESULT=$(node .github/actions/psi)
-          echo "result<<EOF" >> $GITHUB_OUTPUT
-          echo "$RESULT" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Comment PR with PSI results
-        uses: actions/github-script@v7.0.1
-        if: ${{ steps.psi_check.outcome == 'success' }}
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const result = `${{ steps.psi_check.outputs.result }}`;
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: result
-            });
-
-
-  # cache-cleanup:
+  # check_psi:
   #   needs: extract-diff-and-deploy
   #   runs-on: ubuntu-latest
-  #   timeout-minutes: 5
-  #   # ワークフローの最後に必ず実行
-  #   if: ${{ always() }}
+  #   timeout-minutes: 30
+  #   if: ${{ needs.extract-diff-and-deploy.outputs.html_count > 0 }}
   #   steps:
-  #     - name: Cleanup
-  #       run: |
-  #         # GH CLIのインストール（キャッシュ削除に必要）
-  #         if ! command -v gh &> /dev/null; then
-  #           echo "Installing GitHub CLI..."
-  #           curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg | sudo dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg
-  #           echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" | sudo tee /etc/apt/sources.list.d/github-cli.list > /dev/null
-  #           sudo apt update
-  #           sudo apt install gh
-  #         fi
+  #     - uses: actions/checkout@v4
 
-  #         # キャッシュ拡張機能のインストール
-  #         gh extension install actions/gh-actions-cache
+  #     - uses: actions/setup-node@v4.2.0
+  #       with:
+  #         node-version: 'latest'
 
-  #         set +e
-  #         echo "Deleting caches..."
-  #         gh actions-cache list -R $REPO -L 100 | while read -r cacheKey _ branch _
-  #         do
-  #           gh actions-cache delete "$cacheKey" -R $REPO -B "$branch" --confirm
-  #         done
-  #         echo "Done"
+  #     - name: Check PSI
   #       env:
-  #         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-  #         REPO: ${{ github.repository }}
+  #         PSI_API_KEY: ${{ secrets.PSI_API_KEY }}
+  #         BASE_URL: "${{ vars.DEVELOPMENT_REMOTE_PATH }}/${{ github.repository }}/}"
+  #         HTML_FILES: ${{ needs.extract-diff-and-deploy.outputs.html_files }}
+  #       id: psi_check
+  #       run: |
+  #         echo "HTML_FILES: ${{ needs.extract-diff-and-deploy.outputs.html_files }}"
+  #         RESULT=$(node .github/actions/psi)
+  #         echo "result<<EOF" >> $GITHUB_OUTPUT
+  #         echo "$RESULT" >> $GITHUB_OUTPUT
+  #         echo "EOF" >> $GITHUB_OUTPUT
+
+  #     - name: Comment PR with PSI results
+  #       uses: actions/github-script@v7.0.1
+  #       if: ${{ steps.psi_check.outcome == 'success' }}
+  #       with:
+  #         github-token: ${{ secrets.GITHUB_TOKEN }}
+  #         script: |
+  #           const result = `${{ steps.psi_check.outputs.result }}`;
+  #           github.rest.issues.createComment({
+  #             issue_number: context.issue.number,
+  #             owner: context.repo.owner,
+  #             repo: context.repo.repo,
+  #             body: result
+  #           });
