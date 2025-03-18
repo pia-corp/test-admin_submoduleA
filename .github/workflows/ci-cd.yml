@@ -50,8 +50,11 @@ jobs:
         if: steps.extract_html_diff.outputs.html_files != ''
         run: |
           lftp -c "
-          open -u $USERNAME,$PASSWORD $HOST
-          mirror -R --verbose ./public/ $FTP_TARGET_DIR
+            HOST="${{ vars.DEVELOPMENT_HOST }}"
+            USERNAME="${{ vars.DEVELOPMENT_USER_NAME }}"
+            PASSWORD="${{ secrets.DEVELOPMENT_PASSWORD }}"
+            open -u $USERNAME,$PASSWORD $HOST
+            mirror -R --verbose ./public/ $FTP_TARGET_DIR
           "
 
         # run: |
