@@ -65,7 +65,7 @@ jobs:
           set net:max-retries 3
           set net:reconnect-interval-base 5
           set net:reconnect-interval-max 15
-          open -u \"$USERNAME\",\"$PASSWORD\" \"$HOST\"
+          open -u $USERNAME,$PASSWORD $HOST
           set ssl:check-hostname false
 
           # mirror でフォルダとファイルをアップロード
@@ -74,7 +74,7 @@ jobs:
             --only-newer \
             --parallel=10 \
             --verbose \
-            \"$LOCAL\" \"$REMOTE\"
+            $LOCAL $REMOTE
           "
 
           # LFTP を実行（アップロード）
