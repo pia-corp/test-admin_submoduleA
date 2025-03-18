@@ -60,46 +60,29 @@ jobs:
 
       - name: Upload changed files with LFTP
         if: steps.extract_html_diff.outputs.html_files != ''
-        run: |
-          HOST="${{ vars.DEVELOPMENT_HOST }}"
-          USERNAME="${{ vars.DEVELOPMENT_USER_NAME }}"
-          PASSWORD="${{ secrets.DEVELOPMENT_PASSWORD }}"
+        env: |
+          FTP_HOST="${{ vars.DEVELOPMENT_HOST }}"
+          FTP_USER="${{ vars.DEVELOPMENT_USER_NAME }}"
+          FTP_PASSWORD="${{ secrets.DEVELOPMENT_PASSWORD }}"
           LOCAL="./public"
           REMOTE="${{ vars.DEVELOPMENT_REMOTE_PATH }}${GITHUB_REPOSITORY#${GITHUB_REPOSITORY_OWNER}/}/"
-
-          # LFTPスクリプトを作成（アップロード部分のみ）
-          LFTP_SCRIPT="
+        run: |
+          lftp -u "$FTP_USER","$FTP_PASSWORD" "$FTP_HOST" <<EOF
           set net:max-retries 3
           set net:reconnect-interval-base 5
           set net:reconnect-interval-max 15
-          open -u $USERNAME,$PASSWORD $HOST
           set ssl:check-hostname false
 
-          lftp -c "
-            open -u $USERNAME,$PASSWORD $HOST
-            mirror -R --delete --use-cache --parallel=10 --verbose=3 $LOCAL $REMOTE
-          "
+          mirror -R --delete --use-cache --parallel=10 --verbose=3 "$LOCAL" "$REMOTE"
 
-          # ディレクトリと通常ファイルの権限を一括で変更する
-          {
-            # すべてのディレクトリを検索して755権限を設定
-            lftp "$SERVER" <<EOF
-            set ssl:check-hostname false
-            cd "$REMOTE"
-            find | grep "/$"
-            quit
-          EOF
-          } | awk '{ printf "chmod 755 \"%s\"\n", $0 }' > /tmp/chmod_dirs.txt
+          # ディレクトリの権限を755に変更
+          find "$REMOTE" -type d -exec chmod 755 {} \;
 
-          {
-            # すべてのファイルを検索して664権限を設定
-            lftp "$SERVER" <<EOF
-            set ssl:check-hostname false
-            cd "$REMOTE"
-            find | grep -v "/$"
-            quit
+          # ファイルの権限を664に変更
+          find "$REMOTE" -type f -exec chmod 664 {} \;
+
+          bye
           EOF
-          } | awk '{ printf "chmod 664 \"%s\"\n", $0 }' > /tmp/chmod_files.txt
 
 
         # run: |
