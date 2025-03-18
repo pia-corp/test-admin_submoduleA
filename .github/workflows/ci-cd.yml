@@ -83,8 +83,8 @@ jobs:
           # echo "Changing permissions for files (chmod 644)..."
           # find "/$REMOTE" -type f -exec chmod 664 {} \;
 
-          bye
-          EOF
+          # bye
+          # EOF
 
 
         # run: |
