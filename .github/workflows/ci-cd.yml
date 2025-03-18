@@ -52,7 +52,7 @@ jobs:
           HOST="${{ vars.DEVELOPMENT_HOST }}"
           USERNAME="${{ vars.DEVELOPMENT_USER_NAME }}"
           PASSWORD="${{ secrets.DEVELOPMENT_PASSWORD }}"
-          LOCAL="./public/"
+          LOCAL="./public"
           REMOTE="${{ vars.DEVELOPMENT_REMOTE_PATH }}${GITHUB_REPOSITORY#${GITHUB_REPOSITORY_OWNER}/}/"
 
           lftp -c "
