@@ -60,12 +60,12 @@ jobs:
 
       - name: Upload changed files with LFTP
         if: steps.extract_html_diff.outputs.html_files != ''
-        env: |
-          FTP_HOST="${{ vars.DEVELOPMENT_HOST }}"
-          FTP_USER="${{ vars.DEVELOPMENT_USER_NAME }}"
-          FTP_PASSWORD="${{ secrets.DEVELOPMENT_PASSWORD }}"
-          LOCAL="./public"
-          REMOTE="${{ vars.DEVELOPMENT_REMOTE_PATH }}${GITHUB_REPOSITORY#${GITHUB_REPOSITORY_OWNER}/}/"
+        env:
+          FTP_HOST: "${{ vars.DEVELOPMENT_HOST }}"
+          FTP_USER: "${{ vars.DEVELOPMENT_USER_NAME }}"
+          FTP_PASSWORD: "${{ secrets.DEVELOPMENT_PASSWORD }}"
+          LOCAL: "./public"
+          REMOTE: "${GITHUB_REPOSITORY#${GITHUB_REPOSITORY_OWNER}/}/"
         run: |
           lftp -u "$FTP_USER","$FTP_PASSWORD" "$FTP_HOST" <<EOF
           set net:max-retries 3
