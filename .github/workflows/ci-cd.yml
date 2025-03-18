@@ -20,11 +20,15 @@ jobs:
 
       - name: TIME STAMP
         run: |
-          for FILE in $(git ls-files); do
-            TIME=$(git log -1 --pretty=format:%cd --date=format:%Y%m%d%H%M.%S -- "$FILE")
-            echo "$TIME $FILE"
-            touch -t "$TIME" "$FILE"
-          done
+          while IFS= read -r FILE; do
+            TIME=$(git log -1 --pretty=format:%cd --date=format:%Y%m%d%H%M.%S -- "$FILE" 2>/dev/null || echo "")
+            if [[ -n "$TIME" ]]; then
+              echo "Setting timestamp: $TIME for $FILE"
+              touch -t "$TIME" "$FILE"
+            else
+              echo "Skipping $FILE (no commit history)"
+            fi
+          done < <(git ls-files)
 
       - name: Extract HTML file differences
         id: extract_html_diff
