@@ -67,11 +67,17 @@ jobs:
 
           mirror -R --delete --only-newer --use-cache --parallel=10 --verbose=3 "$LOCAL" "$REMOTE"
 
+          echo "Listing directories to change permissions (chmod 755):"
+          find "$REMOTE" -type d -exec echo "Directory: {}" \;  # ディレクトリのリスト表示
           # ディレクトリの権限を755に変更
+          echo "Changing permissions for directories (chmod 755)..."
           find "/$REMOTE" -type d -exec chmod 755 {} \;
 
+          echo "Listing files to change permissions (chmod 644):"
+          find "$REMOTE" -type f -exec echo "File: {}" \;  # ファイルのリスト表示
           # ファイルの権限を664に変更
-          # find "/$REMOTE" -type f -exec chmod 664 {} \;
+          echo "Changing permissions for files (chmod 644)..."
+          find "/$REMOTE" -type f -exec chmod 664 {} \;
 
           bye
           EOF
