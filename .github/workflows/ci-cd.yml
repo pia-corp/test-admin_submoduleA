@@ -52,12 +52,14 @@ jobs:
           HOST="${{ vars.DEVELOPMENT_HOST }}"
           USERNAME="${{ vars.DEVELOPMENT_USER_NAME }}"
           PASSWORD="${{ secrets.DEVELOPMENT_PASSWORD }}"
+          LOCAL="./public/"
           REMOTE="${{ vars.DEVELOPMENT_REMOTE_PATH }}${GITHUB_REPOSITORY#${GITHUB_REPOSITORY_OWNER}/}/"
 
           lftp -c "
             open -u $USERNAME,$PASSWORD $HOST
-            mirror -R --verbose ./public/ $REMOTE
+            mirror --overwrite --scan-all-first --allow-chown --dry-run --verbose $LOCAL $REMOTE
           "
+
 
         # run: |
         #   # 変更されたファイルリストを取得（カンマ区切りを改行区切りに変換）
