@@ -18,6 +18,14 @@ jobs:
         with:
           fetch-depth: 2
 
+      - name: TIME STAMP
+        run: |
+          for FILE in $(git ls-files); do
+            TIME=$(git log -1 --pretty=format:%cd --date=format:%Y%m%d%H%M.%S -- "$FILE")
+            echo "$TIME $FILE"
+            touch -t "$TIME" "$FILE"
+          done
+
       - name: Extract HTML file differences
         id: extract_html_diff
         run: |
@@ -57,7 +65,7 @@ jobs:
 
           lftp -c "
             open -u $USERNAME,$PASSWORD $HOST
-            mirror -R --overwrite --scan-all-first --allow-chown --parallel=2 --verbose=3 $LOCAL $REMOTE
+            mirror -R --allow-chown --parallel=2 --verbose=3 $LOCAL $REMOTE
           "
 
 
