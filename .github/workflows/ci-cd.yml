@@ -18,18 +18,6 @@ jobs:
         with:
           fetch-depth: 2
 
-      - name: TIME STAMP
-        run: |
-          while IFS= read -r FILE; do
-            TIME=$(git log -1 --pretty=format:%cd --date=format:%Y%m%d%H%M.%S -- "$FILE" 2>/dev/null || echo "")
-            if [[ -n "$TIME" ]]; then
-              echo "Setting timestamp: $TIME for $FILE"
-              touch -t "$TIME" "$FILE"
-            else
-              echo "Skipping $FILE (no commit history)"
-            fi
-          done < <(git ls-files)
-
       - name: Extract HTML file differences
         id: extract_html_diff
         run: |
@@ -73,7 +61,7 @@ jobs:
           set net:reconnect-interval-max 15
           set ssl:check-hostname false
 
-          mirror -R --delete --use-cache --parallel=10 --verbose=3 "$LOCAL" "$REMOTE"
+          mirror -R --delete --only-newer --use-cache --parallel=10 --verbose=3 "$LOCAL" "$REMOTE"
 
           # ディレクトリの権限を755に変更
           find "$REMOTE" -type d -exec chmod 755 {} \;
