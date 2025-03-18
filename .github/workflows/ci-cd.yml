@@ -67,10 +67,39 @@ jobs:
           LOCAL="./public"
           REMOTE="${{ vars.DEVELOPMENT_REMOTE_PATH }}${GITHUB_REPOSITORY#${GITHUB_REPOSITORY_OWNER}/}/"
 
+          # LFTPスクリプトを作成（アップロード部分のみ）
+          LFTP_SCRIPT="
+          set net:max-retries 3
+          set net:reconnect-interval-base 5
+          set net:reconnect-interval-max 15
+          open -u $USERNAME,$PASSWORD $HOST
+          set ssl:check-hostname false
+
           lftp -c "
             open -u $USERNAME,$PASSWORD $HOST
-            mirror -R --allow-chown --delete --use-cache --parallel=2 --verbose=3 $LOCAL $REMOTE
+            mirror -R --delete --use-cache --parallel=10 --verbose=3 $LOCAL $REMOTE
           "
+
+          # ディレクトリと通常ファイルの権限を一括で変更する
+          {
+            # すべてのディレクトリを検索して755権限を設定
+            lftp "$SERVER" <<EOF
+            set ssl:check-hostname false
+            cd "$REMOTE"
+            find | grep "/$"
+            quit
+          EOF
+          } | awk '{ printf "chmod 755 \"%s\"\n", $0 }' > /tmp/chmod_dirs.txt
+
+          {
+            # すべてのファイルを検索して664権限を設定
+            lftp "$SERVER" <<EOF
+            set ssl:check-hostname false
+            cd "$REMOTE"
+            find | grep -v "/$"
+            quit
+          EOF
+          } | awk '{ printf "chmod 664 \"%s\"\n", $0 }' > /tmp/chmod_files.txt
 
 
         # run: |
