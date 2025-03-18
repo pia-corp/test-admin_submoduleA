@@ -57,7 +57,7 @@ jobs:
 
           lftp -c "
             open -u $USERNAME,$PASSWORD $HOST
-            mirror -R --overwrite --scan-all-first --allow-chown --dry-run --verbose $LOCAL $REMOTE
+            mirror -R --overwrite --scan-all-first --allow-chown --parallel=2 --verbose=3 $LOCAL $REMOTE
           "
 
 
