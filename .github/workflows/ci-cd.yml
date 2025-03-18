@@ -47,7 +47,7 @@ jobs:
         if: steps.extract_html_diff.outputs.html_files != ''
 
       - name: Set REMOTE path
-        run: echo "${GITHUB_REPOSITORY#${GITHUB_REPOSITORY_OWNER}/}/" >> $GITHUB_ENV
+        run: echo "REMOTE=$(echo ${GITHUB_REPOSITORY} | cut -d'/' -f2)" >> $GITHUB_ENV
 
       - name: Upload changed files with LFTP
         if: steps.extract_html_diff.outputs.html_files != ''
