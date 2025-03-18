@@ -49,12 +49,12 @@ jobs:
       - name: Upload changed files with LFTP
         if: steps.extract_html_diff.outputs.html_files != ''
         run: |
-          lftp -c "
-            HOST="${{ vars.DEVELOPMENT_HOST }}"
-            USERNAME="${{ vars.DEVELOPMENT_USER_NAME }}"
-            PASSWORD="${{ secrets.DEVELOPMENT_PASSWORD }}"
-            REMOTE="${{ vars.DEVELOPMENT_REMOTE_PATH }}${GITHUB_REPOSITORY#${GITHUB_REPOSITORY_OWNER}/}/"
+          HOST="${{ vars.DEVELOPMENT_HOST }}"
+          USERNAME="${{ vars.DEVELOPMENT_USER_NAME }}"
+          PASSWORD="${{ secrets.DEVELOPMENT_PASSWORD }}"
+          REMOTE="${{ vars.DEVELOPMENT_REMOTE_PATH }}${GITHUB_REPOSITORY#${GITHUB_REPOSITORY_OWNER}/}/"
 
+          lftp -c "
             open -u $USERNAME,$PASSWORD $HOST
             mirror -R --verbose ./public/ $REMOTE
           "
