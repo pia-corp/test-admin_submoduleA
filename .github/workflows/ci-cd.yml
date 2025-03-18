@@ -46,6 +46,9 @@ jobs:
         run: sudo apt-get install -y lftp
         if: steps.extract_html_diff.outputs.html_files != ''
 
+      - name: Set REMOTE path
+        run: echo "${GITHUB_REPOSITORY#${GITHUB_REPOSITORY_OWNER}/}/" >> $GITHUB_ENV
+
       - name: Upload changed files with LFTP
         if: steps.extract_html_diff.outputs.html_files != ''
         env:
@@ -53,7 +56,6 @@ jobs:
           FTP_USER: "${{ vars.DEVELOPMENT_USER_NAME }}"
           FTP_PASSWORD: "${{ secrets.DEVELOPMENT_PASSWORD }}"
           LOCAL: "./public"
-          REMOTE: "${GITHUB_REPOSITORY#${GITHUB_REPOSITORY_OWNER}/}/"
         run: |
           lftp -u "$FTP_USER","$FTP_PASSWORD" "$FTP_HOST" <<EOF
           set net:max-retries 3
