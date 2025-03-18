@@ -66,10 +66,13 @@ jobs:
           mirror -R --delete --only-newer --use-cache --parallel=10 --verbose=3 "$LOCAL" "$REMOTE"
 
           # ディレクトリの権限を755に変更
-          find "$REMOTE" -type d -exec chmod 755 {} \;
+          cd "/$REPO/"
+          # find "$REMOTE" -type d -exec chmod 755 {} \;
+          ls -R | grep -v /$ | while read file; do chmod 664 "$file"; done
 
           # ファイルの権限を664に変更
-          find "$REMOTE" -type f -exec chmod 664 {} \;
+          # find "$REMOTE" -type f -exec chmod 664 {} \;
+          ls -R | grep /$ | while read dir; do chmod 755 "$dir"; done
 
           bye
           EOF
