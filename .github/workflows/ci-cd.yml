@@ -70,7 +70,7 @@ jobs:
 
           # mirror でフォルダとファイルをアップロード
           mirror -R \
-            –-delete \
+            --delete \
             --only-newer \
             --parallel=10 \
             --verbose \
