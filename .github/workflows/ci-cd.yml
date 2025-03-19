@@ -65,9 +65,12 @@ jobs:
           set net:reconnect-interval-max 15
           set ssl:check-hostname false
 
+          # ファイルアップロードのループ
           for FILE in \$(cat ${steps.extract_html_diff.outputs.html_files}); do
-            put \$FILE -O /path/to/remote/
+            echo "Uploading file: \$FILE"  # デバッグ用の出力
+            put \$FILE -O /$REMOTE/\$FILE  # 変数の展開
           done
+
           EOF
 
           # mirror -R --delete --only-newer --use-cache --parallel=10 --verbose=3 "$LOCAL" "$REMOTE"
