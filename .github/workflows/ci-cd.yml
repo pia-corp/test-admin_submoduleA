@@ -68,6 +68,7 @@ jobs:
           for FILE in \$(cat ${steps.extract_html_diff.outputs.html_files}); do
             put \$FILE -O /path/to/remote/
           done
+          EOF
 
           # mirror -R --delete --only-newer --use-cache --parallel=10 --verbose=3 "$LOCAL" "$REMOTE"
 
