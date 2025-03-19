@@ -58,99 +58,30 @@ jobs:
           FTP_PASSWORD: "${{ secrets.DEVELOPMENT_PASSWORD }}"
           LOCAL: "./public"
         run: |
-          echo "REMOTE: $REMOTE"
-          lftp -u "$FTP_USER","$FTP_PASSWORD" "$FTP_HOST" <<EOF
-          set net:max-retries 3
-          set net:reconnect-interval-base 5
-          set net:reconnect-interval-max 15
-          set ssl:check-hostname false
+          # 変更されたファイルのリストを取得
+          IFS=',' read -ra HTML_FILES <<< "${{ steps.extract_html_diff.outputs.html_files }}"
 
-          # ファイルアップロードのループ
-          for FILE in \$(cat ${steps.extract_html_diff.outputs.html_files}); do
-            echo "Uploading file: \$FILE"  # デバッグ用の出力
-            put \$FILE -O /$REMOTE/\$FILE  # 変数の展開
-          done
+          # lftp構成ファイルを作成
+          echo "set ssl:verify-certificate no" > ~/.lftprc
+          echo "set net:timeout 10" >> ~/.lftprc
+          echo "set net:max-retries 3" >> ~/.lftprc
+          echo "set net:reconnect-interval-base 5" >> ~/.lftprc
 
-          EOF
+          # lftp接続と各ファイルのアップロード
+          lftp -c "
+            open -u $FTP_USER,$FTP_PASSWORD $FTP_HOST
+            lcd $LOCAL
+            cd ${{ env.REMOTE }}
 
-          # mirror -R --delete --only-newer --use-cache --parallel=10 --verbose=3 "$LOCAL" "$REMOTE"
+            # 変更されたファイルを1つずつアップロード
+            $(for file in "${HTML_FILES[@]}"; do
+              echo "put -O $(dirname "$file") \"$file\""
+            done)
 
-          # echo "Listing directories to change permissions (chmod 755):"
-          # find "$REMOTE" -type d -exec echo "Directory: {}" \;  # ディレクトリのリスト表示
-          # # ディレクトリの権限を755に変更
-          # echo "Changing permissions for directories (chmod 755)..."
-          # find "/$REMOTE" -type d -exec chmod 755 {} \;
+            bye
+          "
 
-          # echo "Listing files to change permissions (chmod 644):"
-          # find "$REMOTE" -type f -exec echo "File: {}" \;  # ファイルのリスト表示
-          # # ファイルの権限を664に変更
-          # echo "Changing permissions for files (chmod 644)..."
-          # find "/$REMOTE" -type f -exec chmod 664 {} \;
-
-          # bye
-          # EOF
-
-
-        # run: |
-        #   # 変更されたファイルリストを取得（カンマ区切りを改行区切りに変換）
-        #   CHANGED_FILES=$(echo "${{ steps.extract_html_diff.outputs.html_files }}" | tr ',' '\n')
-        #   HOST="${{ vars.DEVELOPMENT_HOST }}"
-        #   USERNAME="${{ vars.DEVELOPMENT_USER_NAME }}"
-        #   PASSWORD="${{ secrets.DEVELOPMENT_PASSWORD }}"
-
-        #   # ローカルからサーバへデータをアップロードさせたい場合
-        #   LOCAL="./public/"
-        #   REMOTE="${{ vars.DEVELOPMENT_REMOTE_PATH }}${GITHUB_REPOSITORY#${GITHUB_REPOSITORY_OWNER}/}/"
-        #   echo "$REMOTE"
-
-        #   # LFTPスクリプトを作成（アップロード部分のみ）
-        #   LFTP_SCRIPT="
-        #   set net:max-retries 3
-        #   set net:reconnect-interval-base 5
-        #   set net:reconnect-interval-max 15
-        #   open -u $USERNAME,$PASSWORD $HOST
-        #   set ssl:check-hostname false
-
-        #   # mirror でフォルダとファイルをアップロード
-        #   mirror -R \
-        #     --only-newer \
-        #     --parallel=10 \
-        #     --verbose \
-        #     $LOCAL $REMOTE
-        #   "
-
-        #   # LFTP を実行（アップロード）
-        #   lftp -c "$LFTP_SCRIPT"
-
-        #   # ディレクトリと通常ファイルの権限を一括で変更する
-        #   {
-        #     # すべてのディレクトリを検索して755権限を設定
-        #     lftp "$SERVER" <<EOF
-        #     set ssl:check-hostname false
-        #     cd "$REMOTE"
-        #     find | grep "/$"
-        #     quit
-        #   EOF
-        #   } | awk '{ printf "chmod 755 \"%s\"\n", $0 }' > /tmp/chmod_dirs.txt
-
-        #   {
-        #     # すべてのファイルを検索して664権限を設定
-        #     lftp "$SERVER" <<EOF
-        #     set ssl:check-hostname false
-        #     cd "$REMOTE"
-        #     find | grep -v "/$"
-        #     quit
-        #   EOF
-        #   } | awk '{ printf "chmod 664 \"%s\"\n", $0 }' > /tmp/chmod_files.txt
-
-        #   # 権限変更コマンドを実行
-        #   {
-        #     echo "set ssl:check-hostname false"
-        #     echo "open $SERVER"
-        #     echo "cd \"$REMOTE\""
-        #     cat /tmp/chmod_dirs.txt
-        #     cat /tmp/chmod_files.txt
-        #   } | lftp
+          echo "Successfully uploaded ${#HTML_FILES[@]} files to ${{ env.REMOTE }}"
 
   # check_psi:
   #   needs: extract-diff-and-deploy
