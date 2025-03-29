@@ -20,7 +20,7 @@ jobs:
       HOST: ${{ vars.DEVELOPMENT_HOST }}
       PORT: ${{ vars.DEVELOPMENT_PORT }}
       USER_NAME: ${{ vars.DEVELOPMENT_USER_NAME }}
-      LOCAL_PATH: ${{ vars.LOCAL_PATH }}${{ github.event.repository.name }}
+      LOCAL_PATH: ${{ vars.LOCAL_PATH }}
       REMOTE_PATH: ${{ vars.DEVELOPMENT_REMOTE_PATH }}${{ github.event.repository.name }}
       SYNC_MODE: "full"
 
