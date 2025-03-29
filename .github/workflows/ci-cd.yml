@@ -21,7 +21,7 @@ jobs:
       PORT: ${{ vars.DEVELOPMENT_PORT }}
       USER_NAME: ${{ vars.DEVELOPMENT_USER_NAME }}
       LOCAL_PATH: ${{ vars.LOCAL_PATH }}
-      REMOTE_PATH: ${{ vars.DEVELOPMENT_REMOTE_PATH }}${{ github.event.repository.name }}
+      REMOTE_PATH: ${{ vars.DEVELOPMENT_REMOTE_PATH }}/${{ github.event.repository.name }}
       SYNC_MODE: "full"
 
       TARGET_REPOSITORY: ${{ github.event.repository.name }}
@@ -106,29 +106,29 @@ jobs:
       #   with:
       #     fetch-depth: 0
 
-      # - name: Extract HTML file differences
-      #   id: extract_html_diff
-      #   run: |
-      #     git fetch origin || true
-      #     # HTMLファイルのみを抽出
-      #     HTML_FILES=$(git diff --name-only origin/main HEAD | grep -E 'public/.*\.html$' | sed 's#^public/##g' | tr '\n' ',' || echo "")
+      - name: Extract HTML file differences
+        id: extract_html_diff
+        run: |
+          git fetch origin || true
+          # HTMLファイルのみを抽出
+          HTML_FILES=$(git diff --name-only origin/main HEAD | grep -E 'public/.*\.html$' | sed 's#^public/##g' | tr '\n' ',' || echo "")
 
-      #     # 末尾のカンマを削除
-      #     HTML_FILES=${HTML_FILES%,}
+          # 末尾のカンマを削除
+          HTML_FILES=${HTML_FILES%,}
 
-      #     # ファイルがある場合、改行をカンマに変換
-      #     if [ -n "$HTML_FILES" ]; then
-      #       HTML_FILES=$(echo "$HTML_FILES" | tr '\n' ',')
-      #       HTML_COUNT=$(echo "$HTML_FILES" | awk -F',' '{print NF}')
-      #     else
-      #       echo "No HTML files changed"
-      #       HTML_FILES=""
-      #       HTML_COUNT=0
-      #     fi
+          # ファイルがある場合、改行をカンマに変換
+          if [ -n "$HTML_FILES" ]; then
+            HTML_FILES=$(echo "$HTML_FILES" | tr '\n' ',')
+            HTML_COUNT=$(echo "$HTML_FILES" | awk -F',' '{print NF}')
+          else
+            echo "No HTML files changed"
+            HTML_FILES=""
+            HTML_COUNT=0
+          fi
 
-      #     echo "HTML files changed: $HTML_FILES"
-      #     echo "html_files=${HTML_FILES}" >> $GITHUB_OUTPUT
-      #     echo "html_count=${HTML_COUNT}" >> $GITHUB_OUTPUT
+          echo "HTML files changed: $HTML_FILES"
+          echo "html_files=${HTML_FILES}" >> $GITHUB_OUTPUT
+          echo "html_count=${HTML_COUNT}" >> $GITHUB_OUTPUT
 
       # - name: Install lftp
       #   run: sudo apt-get install -y lftp
@@ -184,18 +184,18 @@ jobs:
   #       with:
   #         node-version: 'latest'
 
-  #     - name: Check PSI
-  #       env:
-  #         PSI_API_KEY: ${{ secrets.PSI_API_KEY }}
-  #         BASE_URL: "${{ vars.DEVELOPMENT_REMOTE_PATH }}/${{ github.repository }}/}"
-  #         HTML_FILES: ${{ needs.extract-diff-and-deploy.outputs.html_files }}
-  #       id: psi_check
-  #       run: |
-  #         echo "HTML_FILES: ${{ needs.extract-diff-and-deploy.outputs.html_files }}"
-  #         RESULT=$(node .github/actions/psi)
-  #         echo "result<<EOF" >> $GITHUB_OUTPUT
-  #         echo "$RESULT" >> $GITHUB_OUTPUT
-  #         echo "EOF" >> $GITHUB_OUTPUT
+      - name: Check PSI
+        env:
+          PSI_API_KEY: ${{ secrets.PSI_API_KEY }}
+          BASE_URL: "https://piapiapia.xsrv.jp/dev/${{ github.event.repository.name }}/}"
+          HTML_FILES: ${{ needs.extract-diff-and-deploy.outputs.html_files }}
+        id: psi_check
+        run: |
+          echo "HTML_FILES: ${{ needs.extract-diff-and-deploy.outputs.html_files }}"
+          RESULT=$(node .github/actions/psi)
+          echo "result<<EOF" >> $GITHUB_OUTPUT
+          echo "$RESULT" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
   #     - name: Comment PR with PSI results
   #       uses: actions/github-script@v7.0.1
