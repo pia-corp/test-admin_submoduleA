@@ -16,8 +16,8 @@ jobs:
     # - 必要に応じてデフォルト値を設定
     # =============================
     outputs:
-      html_files: ${{ steps.set_output.outputs.html_files }}
-      html_count: ${{ steps.set_output.outputs.html_count }}
+      html_files: ${{ steps.extract_html_diff.outputs.html_files }}
+      html_count: ${{ steps.extract_html_diff.outputs.html_count }}
     env:
       # 対象リポジトリ（ブランド）名の決定ロジック
       HOST: ${{ vars.DEVELOPMENT_HOST }}
