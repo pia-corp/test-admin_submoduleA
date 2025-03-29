@@ -17,9 +17,9 @@ jobs:
     # =============================
     env:
       # 対象リポジトリ（ブランド）名の決定ロジック
-      HOST: vars.DEVELOPMENT_HOST
-      PORT: vars.DEVELOPMENT_PORT
-      USER_NAME: vars.DEVELOPMENT_USER_NAME
+      HOST: ${{ vars.DEVELOPMENT_HOST }}
+      PORT: ${{ vars.DEVELOPMENT_PORT }}
+      USER_NAME: ${{ vars.DEVELOPMENT_USER_NAME }}
       LOCAL_PATH: ${{ vars.LOCAL_PATH }}${{ github.event.repository.name }}
       REMOTE_PATH: ${{ vars.DEVELOPMENT_REMOTE_PATH }}${{ github.event.repository.name }}
       SYNC_MODE: "delta"
@@ -101,10 +101,10 @@ jobs:
       # ステップ1: リポジトリのチェックアウト
       # - アップロード対象のファイルにアクセスするために必要
       # =============================
-      - name: リポジトリをチェックアウト
-        uses: actions/checkout@v4.2.2
-        with:
-          fetch-depth: 0
+      # - name: リポジトリをチェックアウト
+      #   uses: actions/checkout@v4.2.2
+      #   with:
+      #     fetch-depth: 0
 
       # - name: Extract HTML file differences
       #   id: extract_html_diff
