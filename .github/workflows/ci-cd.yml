@@ -6,82 +6,189 @@ on:
     types: [opened, edited, reopened, synchronize]
 
 jobs:
-  extract-diff-and-deploy:
-    name: Extract Changes and Deploy
+  Upload:
     runs-on: ubuntu-latest
-    outputs:
-      html_files: ${{ steps.extract_html_diff.outputs.html_files }}
-      html_count: ${{ steps.extract_html_diff.outputs.html_count }}
+    timeout-minutes: 30
+
+    # =============================
+    # 環境変数の設定
+    # - イベントタイプに応じて異なるソースから値を取得
+    # - 必要に応じてデフォルト値を設定
+    # =============================
+    env:
+      # 対象リポジトリ（ブランド）名の決定ロジック
+      HOST: vars.DEVELOPMENT_HOST
+      PORT: vars.DEVELOPMENT_PORT
+      USER_NAME: vars.DEVELOPMENT_USER_NAME
+      LOCAL_PATH: ${{ vars.LOCAL_PATH }}${{ github.event.repository.name }}
+      REMOTE_PATH: ${{ vars.DEVELOPMENT_REMOTE_PATH }}${{ github.event.repository.name }}
+      SYNC_MODE: "delta"
+
+      TARGET_REPOSITORY: ${{ github.event.repository.name }}
+
+      TARGET_ENVIRONMENT: "検証環境"
+
+
     steps:
+      - name: Install dependencies
+        run: echo "name=${{ github.event.repository.name }}"
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 'latest'
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint and rewrite markup
+        run: npm run linter
+
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v3
         with:
-          fetch-depth: 2
+          path: ~/.npm
+          key: ${{ runner.os }}-node-link-checker-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-link-checker-
+            ${{ runner.os }}-node-
 
-      - name: Extract HTML file differences
-        id: extract_html_diff
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Cache http-server output
+        uses: actions/cache@v3
+        with:
+          path: ./.http-server-cache
+          key: ${{ runner.os }}-http-server-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-http-server-
+
+      - name: Create cache directory if it doesn't exist
+        run: mkdir -p ./.http-server-cache
+
+      - name: Start local server
         run: |
-          git fetch origin || true
-          # HTMLファイルのみを抽出
-          HTML_FILES=$(git diff --name-only origin/main HEAD | grep -E 'public/.*\.html$' | sed 's#^public/##g' | tr '\n' ',' || echo "")
+          npx http-server ./public -p 8081 --cache ./.http-server-cache &
+          sleep 5
 
-          # 末尾のカンマを削除
-          HTML_FILES=${HTML_FILES%,}
+      - name: Run link checker
+        id: link-checker
+        run: node link-checker.js
 
-          # ファイルがある場合、改行をカンマに変換
-          if [ -n "$HTML_FILES" ]; then
-            HTML_FILES=$(echo "$HTML_FILES" | tr '\n' ',')
-            HTML_COUNT=$(echo "$HTML_FILES" | awk -F',' '{print NF}')
-          else
-            echo "No HTML files changed"
-            HTML_FILES=""
-            HTML_COUNT=0
+      - name: Post broken links to PR
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const errorsArray = ${{ steps.link-checker.outputs.errors }}
+
+            let message = "";
+            for (let key in errorsArray) {
+              for (let i = 0, len = errorsArray[key].length; i < len; i++) {
+                message += `| ${key} | ${errorsArray[key][i]} |\n`;
+              }
+            }
+
+            const comment = `
+              ## Broken Links Report
+              | ファイル名 | リンク切れパス |
+              | :-- | :-- |
+              ${message}
+            `;
+            github.rest.issues.createComment({
+              ...context.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+
+      # =============================
+      # ステップ1: リポジトリのチェックアウト
+      # - アップロード対象のファイルにアクセスするために必要
+      # =============================
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@v4.2.2
+        with:
+          fetch-depth: 0
+
+      # - name: Extract HTML file differences
+      #   id: extract_html_diff
+      #   run: |
+      #     git fetch origin || true
+      #     # HTMLファイルのみを抽出
+      #     HTML_FILES=$(git diff --name-only origin/main HEAD | grep -E 'public/.*\.html$' | sed 's#^public/##g' | tr '\n' ',' || echo "")
+
+      #     # 末尾のカンマを削除
+      #     HTML_FILES=${HTML_FILES%,}
+
+      #     # ファイルがある場合、改行をカンマに変換
+      #     if [ -n "$HTML_FILES" ]; then
+      #       HTML_FILES=$(echo "$HTML_FILES" | tr '\n' ',')
+      #       HTML_COUNT=$(echo "$HTML_FILES" | awk -F',' '{print NF}')
+      #     else
+      #       echo "No HTML files changed"
+      #       HTML_FILES=""
+      #       HTML_COUNT=0
+      #     fi
+
+      #     echo "HTML files changed: $HTML_FILES"
+      #     echo "html_files=${HTML_FILES}" >> $GITHUB_OUTPUT
+      #     echo "html_count=${HTML_COUNT}" >> $GITHUB_OUTPUT
+
+      # - name: Install lftp
+      #   run: sudo apt-get install -y lftp
+      #   if: steps.extract_html_diff.outputs.html_files != ''
+
+      # - name: Set REMOTE path
+      #   run: echo "REMOTE=$(echo ${GITHUB_REPOSITORY} | cut -d'/' -f2)" >> $GITHUB_ENV
+
+
+      # =============================
+      # ステップ2A: 検証環境デプロイ（SFTP使用）
+      # - セキュリティ向上のためSFTPを使用
+      # - delta同期に対応（変更ファイルのみアップロード可能）
+      # =============================
+      - name: Use SSH private key from GitHub Secrets
+        run: |
+          if [ ! -d "~/.ssh" ]; then
+            mkdir -p ~/.ssh  # SSHディレクトリを作成
           fi
+          # GitHub Secretsから暗号化されたプライベートキーを取り出し、ファイルに保存
+          echo "${{ secrets.DEVELOPMENT_SSH_KEY }}" > ~/.ssh/id_rsa.enc
+          # 復号化のためのパスフレーズをGitHub Secretsから取得（もしあれば）
+          echo "${{ secrets.SSH_PASSPHRASE }}" | openssl rsa -in ~/.ssh/id_rsa.enc -out ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa  # パーミッションを設定
+          # configファイルがない場合に作成（必要な場合）
+          echo -e "Host ${{ env.HOST }}\n  User ${{ env.USER_NAME }}\n  Port ${{ env.PORT }}\n  IdentityFile ~/.ssh/id_rsa\n" > ~/.ssh/config
+          ssh -v -p ${{ env.PORT }} -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ env.USER_NAME }}@${{ env.HOST }} "mkdir -p ${{ env.REMOTE_PATH }}"
 
-          echo "HTML files changed: $HTML_FILES"
-          echo "html_files=${HTML_FILES}" >> $GITHUB_OUTPUT
-          echo "html_count=${HTML_COUNT}" >> $GITHUB_OUTPUT
+      # 2. ファイルをデプロイ
+      - name: Deploy files to the remote server (検証環境)
+        uses: milanmk/actions-file-deployer@1.16
+        with:
+          remote-protocol: 'sftp'
+          remote-host: ${{ env.HOST }}
+          remote-port: ${{ env.PORT }}
+          remote-user: ${{ env.USER_NAME }}
+          ssh-private-key: ~/.ssh/id_rsa
+          local-path: ${{ env.LOCAL_PATH }}
+          remote-path: ${{ env.REMOTE_PATH }}
+          sync: ${{ env.SYNC_MODE }}
+          debug: false
 
-      - name: Install lftp
-        run: sudo apt-get install -y lftp
-        if: steps.extract_html_diff.outputs.html_files != ''
-
-      - name: Set REMOTE path
-        run: echo "REMOTE=$(echo ${GITHUB_REPOSITORY} | cut -d'/' -f2)" >> $GITHUB_ENV
-
-
-      - name: Upload changed files with LFTP
-        if: steps.extract_html_diff.outputs.html_files != ''
-        env:
-          FTP_HOST: "${{ vars.DEVELOPMENT_HOST }}"
-          FTP_USER: "${{ vars.DEVELOPMENT_USER_NAME }}"
-          FTP_PASSWORD: "${{ secrets.DEVELOPMENT_PASSWORD }}"
-          LOCAL: "./public"
-        run: |
-          # 変更されたファイルのリストを取得
-          IFS=',' read -ra HTML_FILES <<< "${{ steps.extract_html_diff.outputs.html_files }}"
-
-          # lftp構成ファイルを作成
-          echo "set ssl:verify-certificate no" > ~/.lftprc
-          echo "set net:timeout 10" >> ~/.lftprc
-          echo "set net:max-retries 3" >> ~/.lftprc
-          echo "set net:reconnect-interval-base 5" >> ~/.lftprc
-
-          # lftp接続と各ファイルのアップロード
-          lftp -c "
-            open -u $FTP_USER,$FTP_PASSWORD $FTP_HOST
-            lcd $LOCAL
-            cd ${{ env.REMOTE }}
-
-            # 変更されたファイルを1つずつアップロード
-            $(for file in "${HTML_FILES[@]}"; do
-              echo "put -O $(dirname "$file") \"$file\""
-            done)
-
-            bye
-          "
-
-          echo "Successfully uploaded ${#HTML_FILES[@]} files to ${{ env.REMOTE }}"
 
   # check_psi:
   #   needs: extract-diff-and-deploy
