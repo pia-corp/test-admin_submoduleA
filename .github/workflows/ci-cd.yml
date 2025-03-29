@@ -188,10 +188,10 @@ jobs:
         env:
           PSI_API_KEY: ${{ secrets.PSI_API_KEY }}
           BASE_URL: "https://piapiapia.xsrv.jp/dev/${{ github.event.repository.name }}/}"
-          HTML_FILES: ${{ needs.extract-diff-and-deploy.outputs.html_files }}
+          HTML_FILES: ${{ needs.extract_html_diff.outputs.html_files }}
         id: psi_check
         run: |
-          echo "HTML_FILES: ${{ needs.extract-diff-and-deploy.outputs.html_files }}"
+          echo "HTML_FILES: ${{ needs.extract_html_diff.outputs.html_files }}"
           RESULT=$(node .github/actions/psi)
           echo "result<<EOF" >> $GITHUB_OUTPUT
           echo "$RESULT" >> $GITHUB_OUTPUT
