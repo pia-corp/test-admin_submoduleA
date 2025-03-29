@@ -158,7 +158,7 @@ jobs:
       - name: Check PSI
         env:
           PSI_API_KEY: ${{ secrets.PSI_API_KEY }}
-          BASE_URL: "https://piapiapia.xsrv.jp/dev/${{ github.event.repository.name }}/"
+          BASE_URL: "https://piapiapia.xsrv.jp/dev/${{ github.event.repository.name }}"
           HTML_FILES: ${{ steps.extract_html_diff.outputs.html_files }}
         id: psi_check
         run: |
