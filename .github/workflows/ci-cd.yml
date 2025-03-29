@@ -100,14 +100,6 @@ jobs:
               body: comment
             });
 
-      # =============================
-      # ステップ1: リポジトリのチェックアウト
-      # - アップロード対象のファイルにアクセスするために必要
-      # =============================
-      # - name: リポジトリをチェックアウト
-      #   uses: actions/checkout@v4.2.2
-      #   with:
-      #     fetch-depth: 0
 
       - name: Extract HTML file differences
         id: extract_html_diff
@@ -133,19 +125,7 @@ jobs:
           echo "html_files=${HTML_FILES}" >> $GITHUB_OUTPUT
           echo "html_count=${HTML_COUNT}" >> $GITHUB_OUTPUT
 
-      # - name: Install lftp
-      #   run: sudo apt-get install -y lftp
-      #   if: steps.extract_html_diff.outputs.html_files != ''
 
-      # - name: Set REMOTE path
-      #   run: echo "REMOTE=$(echo ${GITHUB_REPOSITORY} | cut -d'/' -f2)" >> $GITHUB_ENV
-
-
-      # =============================
-      # ステップ2A: 検証環境デプロイ（SFTP使用）
-      # - セキュリティ向上のためSFTPを使用
-      # - delta同期に対応（変更ファイルのみアップロード可能）
-      # =============================
       - name: Use SSH private key from GitHub Secrets
         run: |
           if [ ! -d "~/.ssh" ]; then
@@ -175,26 +155,14 @@ jobs:
           debug: false
 
 
-  # check_psi:
-  #   needs: extract-diff-and-deploy
-  #   runs-on: ubuntu-latest
-  #   timeout-minutes: 30
-  #   if: ${{ needs.extract-diff-and-deploy.outputs.html_count > 0 }}
-  #   steps:
-  #     - uses: actions/checkout@v4
-
-  #     - uses: actions/setup-node@v4.2.0
-  #       with:
-  #         node-version: 'latest'
-
       - name: Check PSI
         env:
           PSI_API_KEY: ${{ secrets.PSI_API_KEY }}
-          BASE_URL: "https://piapiapia.xsrv.jp/dev/${{ github.event.repository.name }}/}"
-          HTML_FILES: ${{ needs.Upload.outputs.html_files }}
+          BASE_URL: "https://piapiapia.xsrv.jp/dev/${{ github.event.repository.name }}/"
+          HTML_FILES: ${{ steps.extract_html_diff.outputs.html_files }}
         id: psi_check
         run: |
-          echo "HTML_FILES: ${{ needs.Upload.outputs.html_files }}"
+          echo "HTML_FILES: ${{ steps.extract_html_diff.outputs.html_files }}"
           RESULT=$(node .github/actions/psi)
           echo "result<<EOF" >> $GITHUB_OUTPUT
           echo "$RESULT" >> $GITHUB_OUTPUT
