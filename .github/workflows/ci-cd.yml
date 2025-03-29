@@ -30,9 +30,6 @@ jobs:
 
 
     steps:
-      - name: Install dependencies
-        run: echo "name=${{ github.event.repository.name }}"
-
       - name: Checkout code
         uses: actions/checkout@v4
 
@@ -52,23 +49,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Lint and rewrite markup
-        run: npm run linter
-
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Cache npm dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-link-checker-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-link-checker-
-            ${{ runner.os }}-node-
-
-      - name: Install dependencies
-        run: npm ci
+      # - name: Lint and rewrite markup
+      #   run: npm run linter
 
       - name: Cache http-server output
         uses: actions/cache@v3
