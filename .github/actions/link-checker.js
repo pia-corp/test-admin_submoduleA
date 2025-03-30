@@ -81,7 +81,7 @@ htmlFiles.forEach(filePath => {
   fs.writeFileSync(filePath, $.html());
 
   // 検証サーバーのURLに変更
-  const checkUrl = `https://pia2024:piapiapia@piapiapia.xsrv.jp/dev/REPOSITORY/${relativePath}`;
+  const checkUrl = `https://pia2024:piapiapia@piapiapia.xsrv.jp/dev/${REPOSITORY}/${relativePath}`;
   checkedFiles.push(checkUrl);
   console.log(checkedFiles);
   siteChecker.enqueue(checkUrl);
