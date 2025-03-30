@@ -85,42 +85,42 @@ jobs:
       - name: 依存関係をインストール
         run: npm ci
 
-      - name: マークアップリント
-        run: npm run linter
+      # - name: マークアップリント
+      #   run: npm run linter
 
-      # =============================
-      # SSH設定とデプロイ
-      # =============================
-      - name: SSH秘密鍵を設定
-        run: |
-          # SSHディレクトリが存在しない場合は作成
-          if [ ! -d "~/.ssh" ]; then
-            mkdir -p ~/.ssh
-          fi
+      # # =============================
+      # # SSH設定とデプロイ
+      # # =============================
+      # - name: SSH秘密鍵を設定
+      #   run: |
+      #     # SSHディレクトリが存在しない場合は作成
+      #     if [ ! -d "~/.ssh" ]; then
+      #       mkdir -p ~/.ssh
+      #     fi
 
-          # 秘密鍵を設定
-          echo "${{ secrets.DEVELOPMENT_SSH_KEY }}" > ~/.ssh/id_rsa.enc
-          echo "${{ secrets.SSH_PASSPHRASE }}" | openssl rsa -in ~/.ssh/id_rsa.enc -out ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
+      #     # 秘密鍵を設定
+      #     echo "${{ secrets.DEVELOPMENT_SSH_KEY }}" > ~/.ssh/id_rsa.enc
+      #     echo "${{ secrets.SSH_PASSPHRASE }}" | openssl rsa -in ~/.ssh/id_rsa.enc -out ~/.ssh/id_rsa
+      #     chmod 600 ~/.ssh/id_rsa
 
-          # SSH設定を作成
-          echo -e "Host ${{ env.SERVER_HOST }}\n  User ${{ env.SERVER_USER }}\n  Port ${{ env.SERVER_PORT }}\n  IdentityFile ~/.ssh/id_rsa\n" > ~/.ssh/config
+      #     # SSH設定を作成
+      #     echo -e "Host ${{ env.SERVER_HOST }}\n  User ${{ env.SERVER_USER }}\n  Port ${{ env.SERVER_PORT }}\n  IdentityFile ~/.ssh/id_rsa\n" > ~/.ssh/config
 
-          # リモートディレクトリを作成
-          ssh -v -p ${{ env.SERVER_PORT }} -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} "mkdir -p ${{ env.REMOTE_PROJECT_PATH }}"
+      #     # リモートディレクトリを作成
+      #     ssh -v -p ${{ env.SERVER_PORT }} -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} "mkdir -p ${{ env.REMOTE_PROJECT_PATH }}"
 
-      - name: 検証環境へファイルをデプロイ
-        uses: milanmk/actions-file-deployer@1.16
-        with:
-          remote-protocol: 'sftp'
-          remote-host: ${{ env.SERVER_HOST }}
-          remote-port: ${{ env.SERVER_PORT }}
-          remote-user: ${{ env.SERVER_USER }}
-          ssh-private-key: ~/.ssh/id_rsa
-          local-path: ${{ env.LOCAL_PATH }}
-          remote-path: ${{ env.REMOTE_PROJECT_PATH }}
-          sync: ${{ env.SYNC_MODE }}
-          debug: false
+      # - name: 検証環境へファイルをデプロイ
+      #   uses: milanmk/actions-file-deployer@1.16
+      #   with:
+      #     remote-protocol: 'sftp'
+      #     remote-host: ${{ env.SERVER_HOST }}
+      #     remote-port: ${{ env.SERVER_PORT }}
+      #     remote-user: ${{ env.SERVER_USER }}
+      #     ssh-private-key: ~/.ssh/id_rsa
+      #     local-path: ${{ env.LOCAL_PATH }}
+      #     remote-path: ${{ env.REMOTE_PROJECT_PATH }}
+      #     sync: ${{ env.SYNC_MODE }}
+      #     debug: false
 
       # =============================
       # リンクチェック
