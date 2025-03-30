@@ -4,9 +4,7 @@ const path = require('path');
 const cheerio = require('cheerio');
 
 const REPOSITORY = process.env.REPOSITORY;
-console.log(__dirname);
 const publicDir = path.join('/home/runner/work', REPOSITORY, REPOSITORY, 'public/');
-console.log(publicDir);
 // const publicDir = path.join(__dirname, 'public/');
 
 function getHtmlFiles(dir) {
@@ -50,6 +48,7 @@ const siteChecker = new SiteChecker({
     if (result.broken) {
       // 正規表現を使用してプロトコル + ドメイン部分を削除
       const file = result.base.original.replace(/^https?:\/\/[^/]+/, '');
+      console.log(result.url.original);
 
       if (file != "/") {
         if (!brokenLinks[file]) {
