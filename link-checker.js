@@ -43,6 +43,7 @@ const siteChecker = new SiteChecker({
   requestMethod: "get"
 }, {
   link: (result) => {
+    console.log(result);
     if (result.broken) {
       // 正規表現を使用してプロトコル + ドメイン部分を削除
       const file = result.base.original.replace(/^https?:\/\/[^/]+/, '');
@@ -55,11 +56,12 @@ const siteChecker = new SiteChecker({
       }
 
     } else {
-      // console.log(`${result.url.original}: Valid`);
+      console.log(`${result.url.original}: Valid`);
     }
   },
   end: async () => {
     console.log("Link checking completed.");
+    console.log("brokenLinks:" + brokenLinks);
     removeDuplicateLinks(brokenLinks); // 重複を削除
     await notifyGitHub(brokenLinks);
     console.log("Checked files:");
