@@ -4,7 +4,7 @@ const path = require('path');
 const cheerio = require('cheerio');
 
 const publicDir = path.join(__dirname, 'public/');
-console.log('publicDir: ' + publicDir);
+console.log('publicDir:'+ publicDir);
 
 function getHtmlFiles(dir) {
   let htmlFiles = [];
