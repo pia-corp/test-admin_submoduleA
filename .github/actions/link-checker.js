@@ -45,10 +45,11 @@ const siteChecker = new SiteChecker({
   requestMethod: "get"
 }, {
   link: (result) => {
+    console.log(JSON.stringify(result));
+
     if (result.broken) {
       // 正規表現を使用してプロトコル + ドメイン部分を削除
       const file = result.base.original.replace(/^https?:\/\/[^/]+/, '');
-      console.log(JSON.stringify(result));
 
       if (file != "/") {
         if (!brokenLinks[file]) {
