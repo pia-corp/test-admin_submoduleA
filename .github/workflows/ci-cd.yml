@@ -148,7 +148,9 @@ jobs:
         id: link-checker
         env:
           REPOSITORY: ${{ env.TARGET_REPOSITORY }}
-        run: node link-checker.js
+        run: |
+          echo "${{ env.REPOSITORY }}"
+          node link-checker.js
 
       - name: リンク切れ結果をPRにコメント
         uses: actions/github-script@v7.0.1

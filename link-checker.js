@@ -2,7 +2,7 @@ const { SiteChecker } = require("broken-link-checker");
 const fs = require('fs');
 const path = require('path');
 const cheerio = require('cheerio');
-const REPOSITORY = process.env.GITHUB_REPOSITORY;
+const REPOSITORY = process.env.REPOSITORY;
 const publicDir = path.join(__dirname, 'public/');
 console.log('publicDir:'+ publicDir);
 // publicDir:/home/runner/work/test-admin_submoduleA/test-admin_submoduleA/public/
