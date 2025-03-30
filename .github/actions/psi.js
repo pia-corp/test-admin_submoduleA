@@ -2,6 +2,7 @@
 const PSI_API_KEY = process.env.PSI_API_KEY;
 const BASE_URL = process.env.BASE_URL;
 const HTML_FILES_ENV = process.env.HTML_FILES;
+const CONCURRENT_LIMIT = 5; // 同時に実行する最大リクエスト数
 
 if (!PSI_API_KEY) {
   console.error('PSI_API_KEY環境変数が設定されていません');
@@ -41,23 +42,18 @@ function getPathFromUrl(url) {
 }
 
 /**
- * 指定したURLに対してPageSpeed Insightsを実行し、平均スコアを計算する関数
+ * 指定したURLに対してPageSpeed Insightsを実行する関数
  * @param {string} url - 分析するURL
  * @param {string} fileName - 元のファイル名（ログ用）
- * @return {Object|null} 平均分析結果またはエラー時はnull
+ * @return {Promise<Object|null>} 分析結果またはエラー時はnull
  */
 const getScores = async (url, fileName) => {
   const requestUrl = `${PSI_URL}&url=${url}&strategy=mobile`;
-  let totalScores = {
-    performance: 0,
-    accessibility: 0,
-    bestPractices: 0,
-    seo: 0,
-  };
-  let validResultCount = 0;
 
   try {
+    console.log(`[${fileName}] 計測開始: ${url}`);
     const resMobile = await fetch(requestUrl);
+
     if (!resMobile.ok) {
       const errorText = await resMobile.text();
       throw new Error(
@@ -71,76 +67,75 @@ const getScores = async (url, fileName) => {
     }
 
     const categories = dataMobile.lighthouseResult.categories;
-    totalScores.performance += categories.performance.score;
-    totalScores.accessibility += categories.accessibility.score;
-    totalScores.bestPractices += categories['best-practices'].score;
-    totalScores.seo += categories.seo.score;
-    validResultCount++;
+    const scores = {
+      performance: Math.round(categories.performance.score * 100),
+      accessibility: Math.round(categories.accessibility.score * 100),
+      bestPractices: Math.round(categories['best-practices'].score * 100),
+      seo: Math.round(categories.seo.score * 100)
+    };
 
-    // console.log(`[${fileName}] ${i + 1}回目の計測完了`);
+    console.log(`[${fileName}] 計測完了`);
+
+    return {
+      url,
+      fileName,
+      mobile: {
+        performance: scores.performance,
+        accessibility: scores.accessibility,
+        bestPractices: scores.bestPractices,
+        seo: scores.seo,
+        url: `https://pagespeed.web.dev/report?url=${url}`
+      }
+    };
   } catch (error) {
     console.error(
-      `[${fileName}] PageSpeed Insights の実行中にエラーが発生しました (${
-        i + 1
-      }回目): ${url}`,
+      `[${fileName}] PageSpeed Insights の実行中にエラーが発生しました: ${url}`,
       error
     );
-  }
-
-  if (validResultCount === 0) {
-    console.error(`[${fileName}] 有効な結果が得られませんでした: ${url}`);
     return null;
   }
-
-  // 平均値を計算
-  const averageScores = {
-    performance: Math.round(
-      (totalScores.performance / validResultCount) * 100
-    ),
-    accessibility: Math.round(
-      (totalScores.accessibility / validResultCount) * 100
-    ),
-    bestPractices: Math.round(
-      (totalScores.bestPractices / validResultCount) * 100
-    ),
-    seo: Math.round((totalScores.seo / validResultCount) * 100),
-  };
-
-  return {
-    url,
-    fileName,
-    mobile: {
-      performance: averageScores.performance,
-      accessibility: averageScores.accessibility,
-      bestPractices: averageScores.bestPractices,
-      seo: averageScores.seo,
-      url: `https://pagespeed.web.dev/report?url=${url}`, // dataMobile.id は存在しないため url を使用
-    },
-  };
 };
 
 /**
- * リクエストを1秒ごとに並列処理し、結果を待たずに次のAPI通信を実行する関数
+ * 非同期にリクエストを処理し、同時実行数を制限する関数
  * @param {Array<string>} files - ファイル名の配列
+ * @param {number} concurrentLimit - 同時実行する最大リクエスト数
  * @return {Promise<Array<Object>>} 成功した結果の配列
  */
-async function executeRequestsInBatches(files) {
+async function executeRequestsConcurrently(files, concurrentLimit = CONCURRENT_LIMIT) {
   let results = [];
   let failedCount = 0;
 
-  for (const file of files) {
-    const fullUrl = `${BASE_URL}/${file.trim()}`;
+  // 同時実行数を制限するための関数
+  async function processBatch(batch) {
+    const batchPromises = batch.map(file => {
+      const fullUrl = `${BASE_URL}/${file.trim()}`;
+      return getScores(fullUrl, file.trim())
+        .then(result => {
+          if (result) {
+            results.push(result);
+          } else {
+            failedCount++;
+          }
+        })
+        .catch(error => {
+          console.error(`[エラー] ${file.trim()}: ${error}`);
+          failedCount++;
+        });
+    });
 
-    try {
-      const result = await getScores(fullUrl, file.trim());
-      if (result) {
-        results.push(result);
-      } else {
-        failedCount++;
-      }
-    } catch (error) {
-      console.error(`[エラー] ${file.trim()}: ${error}`);
-      failedCount++;
+    await Promise.all(batchPromises);
+  }
+
+  // ファイルリストをバッチに分割して処理
+  for (let i = 0; i < files.length; i += concurrentLimit) {
+    const batch = files.slice(i, i + concurrentLimit);
+    await processBatch(batch);
+
+    // APIレート制限を考慮して少し待つ（オプション）
+    if (i + concurrentLimit < files.length) {
+      console.log(`バッチ処理完了: ${i + concurrentLimit}/${files.length}`);
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
 
@@ -158,7 +153,7 @@ async function executeRequestsInBatches(files) {
  * @return {string} マークダウン文字列
  */
 function generateMarkdown(results, htmlFiles) {
-  let markdown = '## PageSpeed Insights 結果 (Mobile - 平均値)\n\n';
+  let markdown = '## PageSpeed Insights 結果 (Mobile)\n\n';
   markdown += `**分析日時**: ${new Date().toLocaleString('ja-JP', {
     timeZone: 'Asia/Tokyo',
   })}\n`;
@@ -168,7 +163,14 @@ function generateMarkdown(results, htmlFiles) {
     '| Path | Performance | Accessibility | Best Practices | SEO |\n';
   markdown += '| :-- | :--: | :--: | :--: | :--: |\n';
 
-  for (const result of results) {
+  // 結果をパスでソート
+  const sortedResults = [...results].sort((a, b) => {
+    const pathA = a.fileName || getPathFromUrl(a.url) || a.url;
+    const pathB = b.fileName || getPathFromUrl(b.url) || b.url;
+    return pathA.localeCompare(pathB);
+  });
+
+  for (const result of sortedResults) {
     const path = result.fileName || getPathFromUrl(result.url) || result.url;
     markdown += `| [${path}](${result.mobile.url}) | ${scoreWithEmoji(
       result.mobile.performance
@@ -182,7 +184,7 @@ function generateMarkdown(results, htmlFiles) {
 
 /**
  * メイン処理を実行する関数
- * @return {string} 結果のマークダウン文字列
+ * @return {Promise<string>} 結果のマークダウン文字列
  */
 async function main() {
   try {
@@ -198,7 +200,14 @@ async function main() {
       return 'No HTML files changed.';
     }
 
-    const successfulResults = await executeRequestsInBatches(htmlFiles);
+    console.log(`計測開始：${htmlFiles.length}ファイル（同時実行数：${CONCURRENT_LIMIT}）`);
+    const startTime = Date.now();
+
+    // 並列処理で実行
+    const successfulResults = await executeRequestsConcurrently(htmlFiles);
+
+    const endTime = Date.now();
+    console.log(`計測完了：所要時間 ${(endTime - startTime) / 1000}秒`);
 
     if (successfulResults.length === 0) {
       return 'No PageSpeed Insights results obtained.';
@@ -206,7 +215,7 @@ async function main() {
 
     const markdown = generateMarkdown(successfulResults, htmlFiles);
 
-    // console.log("マークダウンレポート生成完了");
+    console.log("マークダウンレポート生成完了");
     return markdown;
   } catch (err) {
     console.error('予期しないエラーが発生しました:', err);
