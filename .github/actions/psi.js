@@ -2,7 +2,7 @@
 const PSI_API_KEY = process.env.PSI_API_KEY;
 const BASE_URL = process.env.BASE_URL;
 const HTML_FILES_ENV = process.env.HTML_FILES;
-const CONCURRENT_LIMIT = 5; // 同時に実行する最大リクエスト数
+const CONCURRENT_LIMIT = 20; // 同時に実行する最大リクエスト数
 
 if (!PSI_API_KEY) {
   console.error('PSI_API_KEY環境変数が設定されていません');
