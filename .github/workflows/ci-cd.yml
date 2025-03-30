@@ -27,14 +27,15 @@ name: PageSpeed Insights 分析
 on:
   pull_request:
     branches:
-      - 'develop/**'
-    types: [opened, edited, synchronize]
+      - 'main'
+    types: [opened, reopened, synchronize]
 
 jobs:
   page_speed_analysis:
     name: デプロイとパフォーマンス分析
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    if: 'startsWith(github.head_ref, "develop")'
 
     # =============================
     # 環境変数の設定
@@ -84,7 +85,7 @@ jobs:
       - name: 依存関係をインストール
         run: npm ci
 
-      - name: マークアップの整形とリント
+      - name: マークアップリント
         run: npm run linter
 
       # =============================
