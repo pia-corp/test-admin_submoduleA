@@ -4,7 +4,7 @@ const path = require('path');
 const cheerio = require('cheerio');
 
 const REPOSITORY = process.env.REPOSITORY;
-const publicDir = path.join(REPOSITORY);
+const publicDir = path.join('dev/', REPOSITORY);
 
 function getHtmlFiles(dir) {
   let htmlFiles = [];
@@ -80,7 +80,7 @@ htmlFiles.forEach(filePath => {
   fs.writeFileSync(filePath, $.html());
 
   // 検証サーバーのURLに変更
-  const checkUrl = `https://piapiapia.xsrv.jp/dev/REPOSITORY/${relativePath}`;
+  const checkUrl = `https://piapiapia.xsrv.jp/${relativePath}`;
   checkedFiles.push(checkUrl);
   siteChecker.enqueue(checkUrl);
 });
