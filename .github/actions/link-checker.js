@@ -80,7 +80,7 @@ htmlFiles.forEach(filePath => {
   fs.writeFileSync(filePath, $.html());
 
   // 検証サーバーのURLに変更
-  const checkUrl = `https://piapiapia.xsrv.jp/dev/${relativePath}`;
+  const checkUrl = `https://piapiapia.xsrv.jp/dev/REPOSITORY/${relativePath}`;
   checkedFiles.push(checkUrl);
   siteChecker.enqueue(checkUrl);
 });
