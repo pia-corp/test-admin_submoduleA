@@ -6,6 +6,7 @@ const cheerio = require('cheerio');
 const REPOSITORY = process.env.REPOSITORY;
 console.log(__dirname);
 const publicDir = path.join('/home/runner/work', REPOSITORY, 'public/');
+console.log(publicDir);
 // const publicDir = path.join(__dirname, 'public/');
 
 function getHtmlFiles(dir) {
