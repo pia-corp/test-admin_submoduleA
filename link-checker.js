@@ -4,8 +4,6 @@ const path = require('path');
 const cheerio = require('cheerio');
 const REPOSITORY = process.env.REPOSITORY;
 const publicDir = path.join(__dirname, 'public/');
-console.log('publicDir:'+ publicDir);
-// publicDir:/home/runner/work/test-admin_submoduleA/test-admin_submoduleA/public/
 
 function getHtmlFiles(dir) {
   let htmlFiles = [];
@@ -78,7 +76,6 @@ htmlFiles.forEach(filePath => {
   });
 
   fs.writeFileSync(filePath, $.html());
-  console.log('file:' + `http://piapiapia.xsrv.jp/dev/${REPOSITORY}/${path.relative(publicDir, filePath)}`);
   siteChecker.enqueue(`http://piapiapia.xsrv.jp/dev/${REPOSITORY}/${path.relative(publicDir, filePath)}`);
 });
 
