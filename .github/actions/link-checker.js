@@ -45,8 +45,6 @@ const siteChecker = new SiteChecker({
   requestMethod: "get"
 }, {
   link: (result) => {
-    console.log(JSON.stringify(result));
-
     if (result.broken) {
       // 正規表現を使用してプロトコル + ドメイン部分を削除
       const file = result.base.original.replace(/^https?:\/\/[^/]+/, '');
@@ -83,8 +81,9 @@ htmlFiles.forEach(filePath => {
   fs.writeFileSync(filePath, $.html());
 
   // 検証サーバーのURLに変更
-  const checkUrl = `https://piapiapia.xsrv.jp/dev/REPOSITORY/${relativePath}`;
+  const checkUrl = `https://pia2024:piapiapia@piapiapia.xsrv.jp/dev/REPOSITORY/${relativePath}`;
   checkedFiles.push(checkUrl);
+  console.log(checkedFiles);
   siteChecker.enqueue(checkUrl);
 });
 
