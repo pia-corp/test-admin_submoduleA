@@ -122,6 +122,25 @@ jobs:
       #     sync: ${{ env.SYNC_MODE }}
       #     debug: false
 
+
+
+      - name: Cache http-server output
+        uses: actions/cache@v3
+        with:
+          path: ./.http-server-cache
+          key: ${{ runner.os }}-http-server-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-http-server-
+
+      - name: Create cache directory if it doesn't exist
+        run: mkdir -p ./.http-server-cache
+
+      - name: Start local server
+        run: |
+          npx http-server ./public -p 8081 --cache ./.http-server-cache &
+          sleep 5
+
+
       # =============================
       # リンクチェック
       # =============================
