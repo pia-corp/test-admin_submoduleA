@@ -127,7 +127,6 @@ const getScores = async (url, fileName) => {
 async function executeRequestsInBatches(files) {
   let results = [];
   let failedCount = 0;
-  let delay = 3000; // 3秒間隔
 
   for (const file of files) {
     const fullUrl = `${BASE_URL}/${file.trim()}`;
@@ -143,9 +142,6 @@ async function executeRequestsInBatches(files) {
       console.error(`[エラー] ${file.trim()}: ${error}`);
       failedCount++;
     }
-
-    // 次のリクエストまで 3 秒待つ
-    await new Promise(resolve => setTimeout(resolve, delay));
   }
 
   if (failedCount > 0) {
@@ -166,7 +162,7 @@ function generateMarkdown(results, htmlFiles) {
   markdown += `**分析日時**: ${new Date().toLocaleString('ja-JP', {
     timeZone: 'Asia/Tokyo',
   })}\n`;
-  markdown += `**分析サイト**: ${BASE_URL}\n`;
+  markdown += `**分析サイト**: ${BASE_URL}/\n`;
   markdown += `**分析ファイル数**: ${results.length}/${htmlFiles.length}\n\n`;
   markdown +=
     '| Path | Performance | Accessibility | Best Practices | SEO |\n';
