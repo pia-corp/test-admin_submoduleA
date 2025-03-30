@@ -130,7 +130,7 @@ jobs:
         env:
           REPOSITORY: ${{ env.TARGET_REPOSITORY }}
         run: |
-          run: node .github/actions/link-checker.js
+          node .github/actions/link-checker.js
 
       - name: リンク切れ結果をPRにコメント
         uses: actions/github-script@v7.0.1
