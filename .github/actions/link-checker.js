@@ -48,7 +48,7 @@ const siteChecker = new SiteChecker({
     if (result.broken) {
       // 正規表現を使用してプロトコル + ドメイン部分を削除
       const file = result.base.original.replace(/^https?:\/\/[^/]+/, '');
-      console.log(result.url.original);
+      console.log(JSON.stringify(result));
 
       if (file != "/") {
         if (!brokenLinks[file]) {
