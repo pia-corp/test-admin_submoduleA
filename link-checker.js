@@ -2,7 +2,7 @@ const { SiteChecker } = require("broken-link-checker");
 const fs = require('fs');
 const path = require('path');
 const cheerio = require('cheerio');
-const REPOSITORY = process.env.REPOSITORY;
+
 const publicDir = path.join(__dirname, 'public/');
 
 function getHtmlFiles(dir) {
@@ -14,7 +14,6 @@ function getHtmlFiles(dir) {
     if (stat.isDirectory()) {
       htmlFiles = htmlFiles.concat(getHtmlFiles(filePath));
     } else if (file.endsWith('.html')) {
-      console.log("filePath:"+filePath);
       htmlFiles.push(filePath);
     }
   });
@@ -44,7 +43,6 @@ const siteChecker = new SiteChecker({
   requestMethod: "get"
 }, {
   link: (result) => {
-    console.log("result:" + result);
     if (result.broken) {
       // 正規表現を使用してプロトコル + ドメイン部分を削除
       const file = result.base.original.replace(/^https?:\/\/[^/]+/, '');
@@ -57,12 +55,11 @@ const siteChecker = new SiteChecker({
       }
 
     } else {
-      console.log(`${result.url.original}: Valid`);
+      // console.log(`${result.url.original}: Valid`);
     }
   },
   end: async () => {
     console.log("Link checking completed.");
-    console.log("brokenLinks:" + brokenLinks);
     removeDuplicateLinks(brokenLinks); // 重複を削除
     await notifyGitHub(brokenLinks);
     console.log("Checked files:");
@@ -79,7 +76,7 @@ htmlFiles.forEach(filePath => {
   });
 
   fs.writeFileSync(filePath, $.html());
-  siteChecker.enqueue(`http://pia2024:piapiapia@piapiapia.xsrv.jp/dev/${REPOSITORY}/${path.relative(publicDir, filePath)}`);
+  siteChecker.enqueue(`http://localhost:8081/${path.relative(publicDir, filePath)}`);
 });
 
 async function notifyGitHub(brokenLinks) {
