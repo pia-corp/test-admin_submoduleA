@@ -1,0 +1,20 @@
+@charset "UTF-8";
+
+.h2-title.thema_202502 {
+  color: #fa64af;
+}
+.news-title.thema_202502 {
+  color: #fa64af;
+}
+
+.pageMenuList li {
+  filter: drop-shadow(3px 3px 3px #fa64af);
+}
+
+.pageMenuItemLine::before {
+  background-color: #fa64af;
+}
+
+.pageMenuItem a {
+  background-color: #fa64af;
+}
