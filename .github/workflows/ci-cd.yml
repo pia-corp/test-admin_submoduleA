@@ -35,7 +35,7 @@ jobs:
     name: デプロイとパフォーマンス分析
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    if: 'startsWith(github.head_ref, "develop")'
+    if: startsWith(github.head_ref, 'develop')
 
     # =============================
     # 環境変数の設定
