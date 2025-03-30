@@ -46,7 +46,6 @@ const siteChecker = new SiteChecker({
   requestMethod: "get"
 }, {
   link: (result) => {
-  console.log(json.stringify(result));
     if (result.broken) {
       // 正規表現を使用してプロトコル + ドメイン部分を削除
       const file = result.base.original.replace(/^https?:\/\/[^/]+/, '');
@@ -59,7 +58,7 @@ const siteChecker = new SiteChecker({
       }
 
     } else {
-      // console.log(`${result.url.original}: Valid`);
+      console.log(`${result.url.original}: Valid`);
     }
   },
   end: async () => {
