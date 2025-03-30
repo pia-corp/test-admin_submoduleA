@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const cheerio = require('cheerio');
 
+console.log(__dirname);
 const publicDir = path.join(__dirname, 'public/');
 const REPOSITORY = process.env.REPOSITORY;
 
