@@ -72,7 +72,6 @@ const siteChecker = new SiteChecker({
 
 htmlFiles.forEach(filePath => {
   const content = fs.readFileSync(filePath, 'utf8');
-  console.log("content:" + content);
   const $ = cheerio.load(content);
 
   $('a[target="_blank"]').each((index, element) => {
