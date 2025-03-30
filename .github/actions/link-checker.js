@@ -2,6 +2,7 @@ const { SiteChecker } = require("broken-link-checker");
 const fs = require('fs');
 const path = require('path');
 const cheerio = require('cheerio');
+const { json } = require("stream/consumers");
 
 const REPOSITORY = process.env.REPOSITORY;
 const publicDir = path.join('/home/runner/work', REPOSITORY, REPOSITORY, 'public/');
@@ -45,6 +46,7 @@ const siteChecker = new SiteChecker({
   requestMethod: "get"
 }, {
   link: (result) => {
+  console.log(json.stringify(result));
     if (result.broken) {
       // 正規表現を使用してプロトコル + ドメイン部分を削除
       const file = result.base.original.replace(/^https?:\/\/[^/]+/, '');
@@ -83,7 +85,6 @@ htmlFiles.forEach(filePath => {
   // 検証サーバーのURLに変更
   const checkUrl = `https://pia2024:piapiapia@piapiapia.xsrv.jp/dev/${REPOSITORY}/${relativePath}`;
   checkedFiles.push(checkUrl);
-  console.log(checkedFiles);
   siteChecker.enqueue(checkUrl);
 });
 
