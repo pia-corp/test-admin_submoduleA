@@ -14,6 +14,7 @@ function getHtmlFiles(dir) {
     if (stat.isDirectory()) {
       htmlFiles = htmlFiles.concat(getHtmlFiles(filePath));
     } else if (file.endsWith('.html')) {
+      console.log("filePath:"+filePath);
       htmlFiles.push(filePath);
     }
   });
@@ -43,7 +44,7 @@ const siteChecker = new SiteChecker({
   requestMethod: "get"
 }, {
   link: (result) => {
-    console.log(result);
+    console.log("result:" + result);
     if (result.broken) {
       // 正規表現を使用してプロトコル + ドメイン部分を削除
       const file = result.base.original.replace(/^https?:\/\/[^/]+/, '');
@@ -71,6 +72,7 @@ const siteChecker = new SiteChecker({
 
 htmlFiles.forEach(filePath => {
   const content = fs.readFileSync(filePath, 'utf8');
+  console.log("content:" + content);
   const $ = cheerio.load(content);
 
   $('a[target="_blank"]').each((index, element) => {
