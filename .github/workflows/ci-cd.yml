@@ -1,4 +1,29 @@
-name: PageSpeed Insights Check
+# =====================================================================
+# PageSpeed Insights 自動チェックワークフロー
+# =====================================================================
+# 概要:
+# このワークフローは、プルリクエスト時に以下の処理を自動的に実行します:
+# 1. コードのチェックアウトと環境設定
+# 2. HTMLファイルの整形（lint）
+# 3. 開発サーバーへのファイルデプロイ
+# 4. リンク切れのチェック
+# 5. 変更されたHTMLファイルに対するPageSpeed Insightsによるパフォーマンス分析
+# 6. 結果のPRへのコメント投稿
+#
+# フロー:
+# プルリクエスト作成/更新 → コードチェックアウト → 依存関係インストール →
+# lint実行 → SSHキー設定 → ファイルデプロイ → リンクチェック →
+# HTML差分抽出 → PSIチェック → 結果投稿
+#
+# 注意事項:
+# - このワークフローは`develop/`ブランチへのPRに対してのみ実行されます
+# - SSH接続のための秘密鍵はGitHubシークレットから取得します
+# - PSI APIキーはGitHubシークレットに設定する必要があります
+# - 処理時間制限は30分です
+# =====================================================================
+
+name: PageSpeed Insights 分析
+
 on:
   pull_request:
     branches:
@@ -6,40 +31,49 @@ on:
     types: [opened, edited, synchronize]
 
 jobs:
-  Upload:
+  page_speed_analysis:
+    name: デプロイとパフォーマンス分析
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
     # =============================
     # 環境変数の設定
-    # - イベントタイプに応じて異なるソースから値を取得
-    # - 必要に応じてデフォルト値を設定
+    # - GitHub変数から環境設定を取得
+    # - 出力値の定義
     # =============================
     outputs:
       html_files: ${{ steps.extract_html_diff.outputs.html_files }}
       html_count: ${{ steps.extract_html_diff.outputs.html_count }}
+
     env:
-      HOST: ${{ vars.DEVELOPMENT_HOST }}
-      PORT: ${{ vars.DEVELOPMENT_PORT }}
-      USER_NAME: ${{ vars.DEVELOPMENT_USER_NAME }}
+      # 接続情報
+      SERVER_HOST: ${{ vars.DEVELOPMENT_HOST }}
+      SERVER_PORT: ${{ vars.DEVELOPMENT_PORT }}
+      SERVER_USER: ${{ vars.DEVELOPMENT_USER_NAME }}
+
+      # パス設定
       LOCAL_PATH: ${{ vars.LOCAL_PATH }}
-      REMOTE_PATH: ${{ vars.DEVELOPMENT_REMOTE_PATH }}/${{ github.event.repository.name }}
+      REMOTE_BASE_PATH: ${{ vars.DEVELOPMENT_REMOTE_PATH }}
+      REMOTE_PROJECT_PATH: ${{ vars.DEVELOPMENT_REMOTE_PATH }}/${{ github.event.repository.name }}
+
+      # デプロイ設定
       SYNC_MODE: "full"
-
       TARGET_REPOSITORY: ${{ github.event.repository.name }}
-
       TARGET_ENVIRONMENT: "検証環境"
 
     steps:
-      - name: ブランチをチェックアウト
+      # =============================
+      # 基本設定
+      # =============================
+      - name: リポジトリをチェックアウト
         uses: actions/checkout@v4.2.2
 
-      - name: Set up Node.js
+      - name: Node.js環境をセットアップ
         uses: actions/setup-node@v4.3.0
         with:
           node-version: 'latest'
 
-      - name: Cache npm dependencies
+      - name: npm依存関係をキャッシュ
         uses: actions/cache@v4.2.3
         with:
           path: ~/.npm
@@ -47,46 +81,56 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-node-
 
-      - name: Install dependencies
+      - name: 依存関係をインストール
         run: npm ci
 
-      - name: Lint and rewrite markup
+      - name: マークアップの整形とリント
         run: npm run linter
 
-      - name: Use SSH private key from GitHub Secrets
+      # =============================
+      # SSH設定とデプロイ
+      # =============================
+      - name: SSH秘密鍵を設定
         run: |
+          # SSHディレクトリが存在しない場合は作成
           if [ ! -d "~/.ssh" ]; then
-            mkdir -p ~/.ssh  # SSHディレクトリを作成
+            mkdir -p ~/.ssh
           fi
-          # GitHub Secretsから暗号化されたプライベートキーを取り出し、ファイルに保存
-          echo "${{ secrets.DEVELOPMENT_SSH_KEY }}" > ~/.ssh/id_rsa.enc
-          # 復号化のためのパスフレーズをGitHub Secretsから取得（もしあれば）
-          echo "${{ secrets.SSH_PASSPHRASE }}" | openssl rsa -in ~/.ssh/id_rsa.enc -out ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa  # パーミッションを設定
-          # configファイルがない場合に作成（必要な場合）
-          echo -e "Host ${{ env.HOST }}\n  User ${{ env.USER_NAME }}\n  Port ${{ env.PORT }}\n  IdentityFile ~/.ssh/id_rsa\n" > ~/.ssh/config
-          ssh -v -p ${{ env.PORT }} -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ env.USER_NAME }}@${{ env.HOST }} "mkdir -p ${{ env.REMOTE_PATH }}"
 
-      - name: Deploy files to the remote server (検証環境)
+          # 秘密鍵を設定
+          echo "${{ secrets.DEVELOPMENT_SSH_KEY }}" > ~/.ssh/id_rsa.enc
+          echo "${{ secrets.SSH_PASSPHRASE }}" | openssl rsa -in ~/.ssh/id_rsa.enc -out ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+          # SSH設定を作成
+          echo -e "Host ${{ env.SERVER_HOST }}\n  User ${{ env.SERVER_USER }}\n  Port ${{ env.SERVER_PORT }}\n  IdentityFile ~/.ssh/id_rsa\n" > ~/.ssh/config
+
+          # リモートディレクトリを作成
+          ssh -v -p ${{ env.SERVER_PORT }} -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} "mkdir -p ${{ env.REMOTE_PROJECT_PATH }}"
+
+      - name: 検証環境へファイルをデプロイ
         uses: milanmk/actions-file-deployer@1.16
         with:
           remote-protocol: 'sftp'
-          remote-host: ${{ env.HOST }}
-          remote-port: ${{ env.PORT }}
-          remote-user: ${{ env.USER_NAME }}
+          remote-host: ${{ env.SERVER_HOST }}
+          remote-port: ${{ env.SERVER_PORT }}
+          remote-user: ${{ env.SERVER_USER }}
           ssh-private-key: ~/.ssh/id_rsa
           local-path: ${{ env.LOCAL_PATH }}
-          remote-path: ${{ env.REMOTE_PATH }}
+          remote-path: ${{ env.REMOTE_PROJECT_PATH }}
           sync: ${{ env.SYNC_MODE }}
           debug: false
 
-      - name: Run link checker
+      # =============================
+      # リンクチェック
+      # =============================
+      - name: リンク切れチェックを実行
         id: link-checker
         env:
           REPOSITORY: ${{ env.TARGET_REPOSITORY }}
         run: node .github/actions/link-checker.js
 
-      - name: Post broken links to PR
+      - name: リンク切れ結果をPRにコメント
         uses: actions/github-script@v7.0.1
         with:
           script: |
@@ -100,7 +144,7 @@ jobs:
             }
 
             const comment = `
-              ## Broken Links Report
+              ## リンク切れレポート
               | ファイル名 | リンク切れパス |
               | :-- | :-- |
               ${message}
@@ -111,44 +155,52 @@ jobs:
               body: comment
             });
 
-      - name: Extract HTML file differences
+      # =============================
+      # HTML変更ファイル抽出
+      # =============================
+      - name: 変更されたHTMLファイルを抽出
         id: extract_html_diff
         run: |
+          # mainブランチと比較するためにfetch
           git fetch origin || true
-          # HTMLファイルのみを抽出
+
+          # HTMLファイルのみを抽出（public配下のみ）
           HTML_FILES=$(git diff --name-only origin/main HEAD | grep -E 'public/.*\.html$' | sed 's#^public/##g' | tr '\n' ',' || echo "")
 
           # 末尾のカンマを削除
           HTML_FILES=${HTML_FILES%,}
 
-          # ファイルがある場合、改行をカンマに変換
+          # 結果の処理
           if [ -n "$HTML_FILES" ]; then
-            HTML_FILES=$(echo "$HTML_FILES" | tr '\n' ',')
             HTML_COUNT=$(echo "$HTML_FILES" | awk -F',' '{print NF}')
+            echo "変更されたHTMLファイル: $HTML_FILES"
           else
-            echo "No HTML files changed"
+            echo "変更されたHTMLファイルはありません"
             HTML_FILES=""
             HTML_COUNT=0
           fi
 
-          echo "HTML files changed: $HTML_FILES"
+          # 出力を設定
           echo "html_files=${HTML_FILES}" >> $GITHUB_OUTPUT
           echo "html_count=${HTML_COUNT}" >> $GITHUB_OUTPUT
 
-      - name: Check PSI
+      # =============================
+      # PageSpeed Insights分析
+      # =============================
+      - name: PageSpeed Insights分析を実行
         env:
           PSI_API_KEY: ${{ secrets.PSI_API_KEY }}
           BASE_URL: "https://piapiapia.xsrv.jp/dev/${{ github.event.repository.name }}"
           HTML_FILES: ${{ steps.extract_html_diff.outputs.html_files }}
         id: psi_check
         run: |
-          echo "HTML_FILES: ${{ steps.extract_html_diff.outputs.html_files }}"
+          echo "分析対象ファイル: ${{ steps.extract_html_diff.outputs.html_files }}"
           RESULT=$(node .github/actions/psi)
           echo "result<<EOF" >> $GITHUB_OUTPUT
           echo "$RESULT" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: Comment PR with PSI results
+      - name: PSI分析結果をPRにコメント
         uses: actions/github-script@v7.0.1
         if: ${{ steps.psi_check.outcome == 'success' }}
         with:
