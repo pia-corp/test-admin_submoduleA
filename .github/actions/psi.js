@@ -51,7 +51,6 @@ const getScores = async (url, fileName) => {
   const requestUrl = `${PSI_URL}&url=${url}&strategy=mobile`;
 
   try {
-    console.log(`[${fileName}] 計測開始: ${url}`);
     const resMobile = await fetch(requestUrl);
 
     if (!resMobile.ok) {
@@ -200,14 +199,8 @@ async function main() {
       return 'No HTML files changed.';
     }
 
-    console.log(`計測開始：${htmlFiles.length}ファイル（同時実行数：${CONCURRENT_LIMIT}）`);
-    const startTime = Date.now();
-
     // 並列処理で実行
     const successfulResults = await executeRequestsConcurrently(htmlFiles);
-
-    const endTime = Date.now();
-    console.log(`計測完了：所要時間 ${(endTime - startTime) / 1000}秒`);
 
     if (successfulResults.length === 0) {
       return 'No PageSpeed Insights results obtained.';
@@ -215,7 +208,6 @@ async function main() {
 
     const markdown = generateMarkdown(successfulResults, htmlFiles);
 
-    console.log("マークダウンレポート生成完了");
     return markdown;
   } catch (err) {
     console.error('予期しないエラーが発生しました:', err);
