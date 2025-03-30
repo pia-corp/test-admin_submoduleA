@@ -3,8 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const cheerio = require('cheerio');
 
-const publicDir = 'public/';
 const REPOSITORY = process.env.REPOSITORY;
+const publicDir = path.join(REPOSITORY);
 
 function getHtmlFiles(dir) {
   let htmlFiles = [];
