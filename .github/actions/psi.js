@@ -127,21 +127,14 @@ const getScores = async (url, fileName) => {
 async function executeRequestsInBatches(files) {
   let results = [];
   let failedCount = 0;
-  let delay = 3000; // 1秒間隔
+  let delay = 3000; // 3秒間隔
 
-  const processFile = async (file, startTime) => {
-    const now = Date.now();
-    const elapsedTime = now - startTime;
-    const remainingTime = Math.max(0, delay - elapsedTime);
-
-    await new Promise(resolve => setTimeout(resolve, remainingTime));
-
+  for (const file of files) {
     const fullUrl = `${BASE_URL}/${file.trim()}`;
 
     try {
       const result = await getScores(fullUrl, file.trim());
       if (result) {
-        const test = JSON.stringify(result);
         results.push(result);
       } else {
         failedCount++;
@@ -150,12 +143,10 @@ async function executeRequestsInBatches(files) {
       console.error(`[エラー] ${file.trim()}: ${error}`);
       failedCount++;
     }
-  };
 
-  const startTime = Date.now();
-  const promises = files.map(file => processFile(file, startTime));
-
-  await Promise.all(promises);
+    // 次のリクエストまで 3 秒待つ
+    await new Promise(resolve => setTimeout(resolve, delay));
+  }
 
   if (failedCount > 0) {
     console.log(`${failedCount}件のリクエストが失敗しました`);
@@ -204,12 +195,7 @@ async function main() {
       return 'HTML files not provided.';
     }
 
-    let htmlFiles;
-    if (HTML_FILES_ENV.includes(',')) {
-      htmlFiles = HTML_FILES_ENV.split(',').filter((file) => file.trim() !== ''); // 空文字列を除外
-    } else {
-      htmlFiles = HTML_FILES_ENV.split(/\s+/).filter((file) => file.trim() !== ''); // 空文字列を除外
-    }
+    let htmlFiles = HTML_FILES_ENV.split(/,\s*|\s+/).filter((file) => file.trim() !== '');
 
     if (htmlFiles.length === 0) {
       console.log('変更されたHTMLファイルはありません');
