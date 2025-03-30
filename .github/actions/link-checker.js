@@ -4,13 +4,15 @@ const path = require('path');
 const cheerio = require('cheerio');
 
 const REPOSITORY = process.env.REPOSITORY;
-console.log(REPOSITORY);
-const publicDir = path.join('dev/', REPOSITORY);
+// console.log(REPOSITORY);
+// const publicDir = path.join('dev/', REPOSITORY);
+const publicDir = path.join(__dirname, 'public/');
 console.log(publicDir);
 
 function getHtmlFiles(dir) {
   let htmlFiles = [];
   const files = fs.readdirSync(dir);
+console.log(files);
   files.forEach(file => {
     const filePath = path.join(dir, file);
     const stat = fs.statSync(filePath);
