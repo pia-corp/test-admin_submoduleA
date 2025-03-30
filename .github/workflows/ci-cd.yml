@@ -149,7 +149,6 @@ jobs:
         env:
           REPOSITORY: ${{ env.TARGET_REPOSITORY }}
         run: |
-          echo "${{ env.REPOSITORY }}"
           node link-checker.js
 
       - name: リンク切れ結果をPRにコメント
