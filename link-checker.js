@@ -76,7 +76,7 @@ htmlFiles.forEach(filePath => {
   });
 
   fs.writeFileSync(filePath, $.html());
-  siteChecker.enqueue(`http://piapiapia.xsrv.jp/dev/${REPOSITORY}/${path.relative(publicDir, filePath)}`);
+  siteChecker.enqueue(`http://pia2024:piapiapia@piapiapia.xsrv.jp/dev/${REPOSITORY}/${path.relative(publicDir, filePath)}`);
 });
 
 async function notifyGitHub(brokenLinks) {
