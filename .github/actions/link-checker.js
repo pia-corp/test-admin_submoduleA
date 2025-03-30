@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const cheerio = require('cheerio');
 
-const publicDir = path.join(__dirname, 'public/');
+const publicDir = 'public/';
 const REPOSITORY = process.env.REPOSITORY;
 
 function getHtmlFiles(dir) {
