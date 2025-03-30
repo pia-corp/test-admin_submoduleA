@@ -4,7 +4,9 @@ const path = require('path');
 const cheerio = require('cheerio');
 
 const REPOSITORY = process.env.REPOSITORY;
+console.log(REPOSITORY);
 const publicDir = path.join('dev/', REPOSITORY);
+console.log(publicDir);
 
 function getHtmlFiles(dir) {
   let htmlFiles = [];

@@ -130,7 +130,6 @@ jobs:
         env:
           REPOSITORY: ${{ env.TARGET_REPOSITORY }}
         run: |
-          echo "REPOSITORY=${{ env.REPOSITORY }}"
           node .github/actions/link-checker
 
       - name: リンク切れ結果をPRにコメント
