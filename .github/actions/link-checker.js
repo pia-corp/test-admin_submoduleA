@@ -7,12 +7,12 @@ const REPOSITORY = process.env.REPOSITORY;
 // console.log(REPOSITORY);
 // const publicDir = path.join('dev/', REPOSITORY);
 const publicDir = path.join(__dirname, 'public/');
-console.log(publicDir);
+console.log('publicDir: ' + publicDir);
 
 function getHtmlFiles(dir) {
   let htmlFiles = [];
   const files = fs.readdirSync(dir);
-console.log(files);
+console.log('files:' + files);
   files.forEach(file => {
     const filePath = path.join(dir, file);
     const stat = fs.statSync(filePath);
@@ -80,13 +80,14 @@ htmlFiles.forEach(filePath => {
     $(element).attr('href', '#');
   });
 
-  const relativePath = path.relative(publicDir, filePath);
+  // const relativePath = path.relative(publicDir, filePath);
   fs.writeFileSync(filePath, $.html());
 
-  // 検証サーバーのURLに変更
-  const checkUrl = `https://piapiapia.xsrv.jp/${relativePath}`;
-  checkedFiles.push(checkUrl);
-  siteChecker.enqueue(checkUrl);
+  siteChecker.enqueue(`http://localhost:8081/${path.relative(publicDir, filePath)}`);
+  // // 検証サーバーのURLに変更
+  // const checkUrl = `https://piapiapia.xsrv.jp/${relativePath}`;
+  // checkedFiles.push(checkUrl);
+  // siteChecker.enqueue(checkUrl);
 });
 
 async function notifyGitHub(brokenLinks) {
