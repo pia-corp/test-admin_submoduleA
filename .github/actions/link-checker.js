@@ -4,6 +4,7 @@ const path = require('path');
 const cheerio = require('cheerio');
 
 const publicDir = path.join(__dirname, 'public/');
+const REPOSITORY = process.env.REPOSITORY;
 
 function getHtmlFiles(dir) {
   let htmlFiles = [];
@@ -75,8 +76,13 @@ htmlFiles.forEach(filePath => {
     $(element).attr('href', '#');
   });
 
+  const relativePath = path.relative(publicDir, filePath);
   fs.writeFileSync(filePath, $.html());
-  siteChecker.enqueue(`http://localhost:8081/${path.relative(publicDir, filePath)}`);
+
+  // 検証サーバーのURLに変更
+  const checkUrl = `https://piapiapia.xsrv.jp/dev/REPOSITORY/${relativePath}`;
+  checkedFiles.push(checkUrl);
+  siteChecker.enqueue(checkUrl);
 });
 
 async function notifyGitHub(brokenLinks) {
