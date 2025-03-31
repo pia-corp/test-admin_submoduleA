@@ -73,6 +73,184 @@ function removeDuplicateLinks(brokenLinks) {
   return brokenLinks;
 }
 
+// 追加: metaタグとOGPリンク、JSON-LDも処理するように修正
+async function extractAndCheckMetaLinks(filePath, brokenLinks, linkCheckerCallback) {
+  try {
+    // ファイル読み込み
+    const content = await fs.readFile(filePath, 'utf8');
+    const $ = cheerio.load(content);
+
+    // OGPとmetaタグからリンクを抽出（既存のコード）
+    const metaLinks = [];
+
+    // 1. og:imageやog:urlなどのOGPリンク
+    $('meta[property^="og:"]').each((_, element) => {
+      const content = $(element).attr('content');
+      if (content && (content.startsWith('http://') || content.startsWith('https://'))) {
+        metaLinks.push(content);
+      }
+    });
+
+    // 2. Twitter Cardsのリンク
+    $('meta[name^="twitter:"]').each((_, element) => {
+      const content = $(element).attr('content');
+      if (content && (content.startsWith('http://') || content.startsWith('https://'))) {
+        metaLinks.push(content);
+      }
+    });
+
+    // 3. その他のメタタグのリンク (例: canonical, alternate等)
+    $('link[rel="canonical"], link[rel="alternate"], link[rel="icon"], link[rel="stylesheet"]').each((_, element) => {
+      const href = $(element).attr('href');
+      if (href && (href.startsWith('http://') || href.startsWith('https://') || href.startsWith('/'))) {
+        metaLinks.push(href);
+      }
+    });
+
+    // 4. その他のmetaタグのcontent属性内のURL
+    $('meta').each((_, element) => {
+      const content = $(element).attr('content');
+      if (content && (content.startsWith('http://') || content.startsWith('https://'))) {
+        metaLinks.push(content);
+      }
+    });
+
+    // 5. JSON-LDからリンクを抽出（新規追加部分）
+    $('script[type="application/ld+json"]').each((_, element) => {
+      try {
+        const jsonContent = $(element).html();
+        // JSON-LDを解析
+        const jsonData = JSON.parse(jsonContent);
+
+        // JSON-LDからURLを再帰的に抽出する
+        const jsonldLinks = extractUrlsFromJsonld(jsonData);
+        metaLinks.push(...jsonldLinks);
+      } catch (jsonError) {
+        debug.error(`JSON-LD解析エラー ${filePath}: ${jsonError}`);
+      }
+    });
+
+    // リンクが存在する場合、それらを検証
+    if (metaLinks.length > 0) {
+      const relativeFilePath = path.relative(publicDir, filePath);
+
+      // debug.log(`ファイル ${relativeFilePath} からメタリンク・JSON-LDリンク ${metaLinks.length}件を抽出しました`);
+
+      // 各リンクをチェック
+      for (const link of metaLinks) {
+        // 実際にリンクをチェックするロジック
+        await checkSingleLink(link, relativeFilePath, brokenLinks, linkCheckerCallback);
+      }
+    }
+  } catch (error) {
+    debug.error(`メタリンク/JSON-LD抽出エラー ${filePath}: ${error}`);
+  }
+}
+
+// JSON-LDから再帰的にURLを抽出する新しい関数
+function extractUrlsFromJsonld(jsonObj) {
+  const urls = [];
+
+  // オブジェクトの再帰的な走査
+  function traverse(obj) {
+    if (!obj || typeof obj !== 'object') return;
+
+    // 配列の場合は各要素を処理
+    if (Array.isArray(obj)) {
+      obj.forEach(item => traverse(item));
+      return;
+    }
+
+    // オブジェクトのキーと値をループ
+    for (const [key, value] of Object.entries(obj)) {
+      // URL関連のプロパティ名を検出
+      const urlProperties = [
+        'url', 'image', 'logo', 'thumbnail', 'contentUrl',
+        'embedUrl', 'thumbnailUrl', 'downloadUrl', 'sameAs',
+        'link', 'href', 'src', 'profileUrl', 'significantLink'
+      ];
+
+      // 値がURL文字列の場合
+      if (typeof value === 'string') {
+        // キーがURL関連のプロパティか、値がURLの形式の場合
+        if (
+          urlProperties.some(prop => key.toLowerCase().includes(prop.toLowerCase())) ||
+          value.match(/^https?:\/\//) ||
+          value.startsWith('/')
+        ) {
+          urls.push(value);
+        }
+      }
+      // 値がオブジェクトまたは配列の場合は再帰
+      else if (value && typeof value === 'object') {
+        traverse(value);
+      }
+    }
+  }
+
+  traverse(jsonObj);
+  return urls;
+}
+
+// 追加: 単一のリンクをチェックする関数
+async function checkSingleLink(url, filePath, brokenLinks, callback) {
+  try {
+    // 相対パスをフルパスに変換
+    if (url.startsWith('/')) {
+      url = `http://localhost:8081${url}`;
+    }
+
+    // HTTPリクエストを行い、リンクが有効かチェック
+    const response = await fetch(url, {
+      method: 'HEAD',
+      timeout: 5000,
+      redirect: 'follow'
+    });
+
+    // ステータスコードが200～399の範囲外ならブロークンリンクと判断
+    if (response.status < 200 || response.status >= 400) {
+      if (!brokenLinks[filePath]) {
+        brokenLinks[filePath] = [];
+      }
+      brokenLinks[filePath].push(url);
+
+      // カウンターをインクリメント
+      totalBrokenLinksCount++;
+
+      // コールバック関数があれば実行
+      if (typeof callback === 'function') {
+        callback({
+          broken: true,
+          url: { original: url },
+          base: { original: filePath }
+        });
+      }
+
+      // debug.log(`メタリンク切れ検出: ${url} in ${filePath}`);
+    }
+  } catch (error) {
+    // 接続エラーなどはリンク切れとして扱う
+    if (!brokenLinks[filePath]) {
+      brokenLinks[filePath] = [];
+    }
+    brokenLinks[filePath].push(url);
+
+    // カウンターをインクリメント
+    totalBrokenLinksCount++;
+
+    // コールバック関数があれば実行
+    if (typeof callback === 'function') {
+      callback({
+        broken: true,
+        url: { original: url },
+        base: { original: filePath }
+      });
+    }
+
+    // debug.log(`メタリンク接続エラー: ${url} in ${filePath} - ${error.message}`);
+  }
+}
+
 // GitHubへの通知関数を修正
 async function notifyGitHub(brokenLinks) {
   // debug.log(`GitHub通知処理開始`);
@@ -172,9 +350,51 @@ async function main() {
       });
     };
 
+    // リンク検出時のコールバック関数
+    const linkCallback = (result) => {
+      // リンクカウンターをインクリメント
+      if (checkerInstance.linkCounters) {
+        checkerInstance.linkCounters.increment();
+      }
+
+      linkCounts.total++;
+
+      if (result.broken) {
+        // 壊れたリンクカウンターをインクリメント
+        if (checkerInstance.linkCounters) {
+          checkerInstance.linkCounters.getBroken();
+        }
+
+        linkCounts.broken++;
+        totalBrokenLinksCount++;
+
+        // 正規表現を使用してプロトコル + ドメイン部分を削除
+        const file = result.base.original.replace(/^https?:\/\/[^/]+/, '');
+
+        // debug.log(`リンク切れ検出: ${result.url.original} in ${file}`);
+
+        if (file !== "/") {
+          if (!brokenLinks[file]) {
+            brokenLinks[file] = [];
+          }
+          brokenLinks[file].push(result.url.original);
+        }
+
+        // リンク切れが101件に達したらフラグをセット
+        if (totalBrokenLinksCount >= BROKEN_LINKS_LIMIT && !shouldStopChecking) {
+          shouldStopChecking = true;
+          debug.info(`リンク切れが${BROKEN_LINKS_LIMIT}件に達したため、調査を中止します`);
+          checkerInstance.pause(); // チェックを一時停止
+
+          // 結果を処理して終了
+          processFinalResults();
+        }
+      }
+    };
+
     // チェッカーのインスタンスを作成
     const checkerInstance = new SiteChecker({
-      excludedKeywords: ['https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
+      excludedKeywords: ['https://fonts.googleapis.com', 'https://fonts.gstatic.com', 'typesquare.com'],
       excludeExternalLinks: false,
       excludeInternalLinks: false,
       excludeLinksToSamePage: true,
@@ -184,46 +404,7 @@ async function main() {
       maxSocketsPerHost: 5, // 同一ホストへの接続数を制限
       timeout: 10000 // タイムアウト値を設定（10秒）
     }, {
-      link: (result) => {
-        // リンクカウンターをインクリメント
-        if (checkerInstance.linkCounters) {
-          checkerInstance.linkCounters.increment();
-        }
-
-        linkCounts.total++;
-
-        if (result.broken) {
-          // 壊れたリンクカウンターをインクリメント
-          if (checkerInstance.linkCounters) {
-            checkerInstance.linkCounters.getBroken();
-          }
-
-          linkCounts.broken++;
-          totalBrokenLinksCount++;
-
-          // 正規表現を使用してプロトコル + ドメイン部分を削除
-          const file = result.base.original.replace(/^https?:\/\/[^/]+/, '');
-
-          // debug.log(`リンク切れ検出: ${result.url.original} in ${file}`);
-
-          if (file !== "/") {
-            if (!brokenLinks[file]) {
-              brokenLinks[file] = [];
-            }
-            brokenLinks[file].push(result.url.original);
-          }
-
-          // リンク切れが101件に達したらフラグをセット
-          if (totalBrokenLinksCount >= BROKEN_LINKS_LIMIT && !shouldStopChecking) {
-            shouldStopChecking = true;
-            debug.info(`リンク切れが${BROKEN_LINKS_LIMIT}件に達したため、調査を中止します`);
-            checkerInstance.pause(); // チェックを一時停止
-
-            // 結果を処理して終了
-            processFinalResults();
-          }
-        }
-      },
+      link: linkCallback,
       end: () => {
         if (checkerInstance.linkCounters) {
           const url = checkerInstance.linkCounters.getUrl();
@@ -314,6 +495,9 @@ async function main() {
 
           // サイトチェッカー実行
           await siteCheckerPromise(url, filePath, checkerInstance);
+
+          // 追加: メタタグとOGPリンクのチェック
+          await extractAndCheckMetaLinks(filePath, brokenLinks, linkCallback);
 
           const fileEndTime = Date.now();
           const fileDuration = (fileEndTime - fileStartTime) / 1000;
