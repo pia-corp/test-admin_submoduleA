@@ -1,6 +1,6 @@
 const fs = require('fs');
 const path = require('path');
-const { BrokenLinkChecker } = require('broken-link-checker');
+const blc = require('broken-link-checker');
 const glob = require('glob');
 const core = require('@actions/core');
 const github = require('@actions/github');
@@ -117,7 +117,7 @@ htmlFiles.forEach(htmlFile => {
   console.log(`チェック中: ${htmlFile}`);
 
   // 単一ファイルのチェッカーを作成
-  const blc = new BrokenLinkChecker(options, {
+  const siteChecker = new blc.SiteChecker(options, {
     link: handleBrokenLink,
     complete: () => {
       filesChecked++;
@@ -130,5 +130,5 @@ htmlFiles.forEach(htmlFile => {
   });
 
   // チェック開始
-  blc.scan(fileUrl);
+  siteChecker.enqueue(fileUrl);
 });
