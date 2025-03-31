@@ -26,7 +26,7 @@ jobs:
         run: |
           npm init -y
           npm install glob
-          cp $GITHUB_WORKSPACE/.github/scripts/processResults.js ./processResults.js
+          cp $GITHUB_WORKSPACE/.github/actions/processResults.js ./processResults.js
 
       - name: リンク切れチェック実行
         id: blc
