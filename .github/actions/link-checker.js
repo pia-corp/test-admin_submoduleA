@@ -1,4 +1,5 @@
 const { promisify } = require('util');
+const { ReadableStream } = require('stream-web');
 const fs = require('fs');
 const path = require('path');
 const blc = require('broken-link-checker');
