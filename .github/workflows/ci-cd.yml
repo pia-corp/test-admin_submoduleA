@@ -133,91 +133,175 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Clone repository
-        uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
         with:
-          fetch-depth: 0
-          ref: ${{github.event.pull_request.head.ref}}
-          repository: ${{github.event.pull_request.head.repo.full_name}}
+          node-version: '16'
 
-      - name: Check out base branch
-        run: git checkout ${{github.event.pull_request.base.ref}}
+      - name: Install dependencies
+        run: npm install broken-link-checker cheerio
 
-      - name: Dump all links from ${{github.event.pull_request.base.ref}}
-        uses: lycheeverse/lychee-action@v2
-        with:
-          args: |
-            --dump
-            --include-fragments
-            .
-          output: ./existing-links.txt
-        continue-on-error: true # Don't fail if base branch check has issues
-
-      - name: Stash untracked files
-        run: git stash push --include-untracked
-
-      - name: Check out feature branch
-        run: git checkout ${{ github.head_ref }}
-
-      - name: Apply stashed changes
-        run: git stash pop || true
-
-      - name: Update ignore file
+      - name: Create link checker script
         run: |
-          if [ -f "existing-links.txt" ]; then
-            cat existing-links.txt >> .lycheeignore
-          fi
+          cat > check-links.js << 'EOF'
+          const { promisify } = require('util');
+          const fs = require('fs');
+          const path = require('path');
+          const blc = require('broken-link-checker');
+          const cheerio = require('cheerio');
 
-      - name: Check links
-        uses: lycheeverse/lychee-action@v2
-        with:
-          args: |
-            --no-progress
-            --include-fragments
-            --root-dir `/home/user/${{ github.event.repository.name }}/public/`
-            .
+          const readdir = promisify(fs.readdir);
+          const readFile = promisify(fs.readFile);
+          const writeFile = promisify(fs.writeFile);
+          const stat = promisify(fs.stat);
 
-      - name: Provide helpful failure message
-        if: failure()
-        run: |
-          echo "::error::Link check failed! Please review the broken links reported above."
-          echo ""
-          echo "If certain links are valid but fail due to:"
-          echo "- CAPTCHA challenges"
-          echo "- IP blocking"
-          echo "- Authentication requirements"
-          echo "- Rate limiting"
-          echo ""
-          echo "Consider adding them to .lycheeignore to bypass future checks."
-          echo "Format: Add one URL pattern per line"
-          exit 1
+          // HTMLファイルを再帰的に検索する関数
+          async function findHtmlFiles(dir) {
+            const files = await readdir(dir);
+            const htmlFiles = [];
 
+            for (const file of files) {
+              const filePath = path.join(dir, file);
+              const stats = await stat(filePath);
 
-
-      - name: リンク切れ結果をPRにコメント
-        uses: actions/github-script@v7.0.1
-        with:
-          script: |
-            const errorsArray = ${{ steps.link-checker.outputs.errors }}
-
-            let message = "";
-            for (let key in errorsArray) {
-              for (let i = 0, len = errorsArray[key].length; i < len; i++) {
-                message += `| ${key} | ${errorsArray[key][i]} |\n`;
+              if (stats.isDirectory()) {
+                const subDirFiles = await findHtmlFiles(filePath);
+                htmlFiles.push(...subDirFiles);
+              } else if (file.endsWith('.html')) {
+                htmlFiles.push(filePath);
               }
             }
 
-            const comment = `
-              ## リンク切れレポート
-              | ファイル名 | リンク切れパス |
-              | :-- | :-- |
-              ${message}
-            `;
-            github.rest.issues.createComment({
-              ...context.repo,
-              issue_number: context.issue.number,
-              body: comment
+            return htmlFiles;
+          }
+
+          // 一つのHTMLファイルのリンクをチェックする関数
+          function checkFileLinks(filePath) {
+            return new Promise(async (resolve) => {
+              const brokenLinks = [];
+              const fileContent = await readFile(filePath, 'utf-8');
+              const $ = cheerio.load(fileContent);
+              let pendingLinks = 0;
+              let completed = false;
+
+              // すべてのaタグのhref属性を取得
+              const links = $('a').map((i, el) => $(el).attr('href')).get()
+                .filter(href => href && !href.startsWith('#') && !href.startsWith('mailto:') && !href.startsWith('tel:'));
+
+              if (links.length === 0) {
+                return resolve({ filePath, brokenLinks: [] });
+              }
+
+              // 相対パスをファイルシステムパスに変換
+              const urlChecker = new blc.HtmlUrlChecker(
+                { honorRobotExclusions: false, excludeExternalLinks: false },
+                {
+                  link: (result) => {
+                    if (result.broken) {
+                      brokenLinks.push({
+                        url: result.url.original,
+                        reason: result.brokenReason
+                      });
+                    }
+                    pendingLinks--;
+                    if (pendingLinks === 0 && completed) {
+                      resolve({ filePath, brokenLinks });
+                    }
+                  },
+                  complete: () => {
+                    completed = true;
+                    if (pendingLinks === 0) {
+                      resolve({ filePath, brokenLinks });
+                    }
+                  }
+                }
+              );
+
+              pendingLinks = links.length;
+              for (const link of links) {
+                let url = link;
+                if (!url.startsWith('http') && !url.startsWith('file://')) {
+                  // 相対パスを絶対パスに変換
+                  const baseDir = path.dirname(filePath);
+                  url = `file://${path.resolve(baseDir, url)}`;
+                }
+                urlChecker.enqueue(url);
+              }
             });
+          }
+
+          async function main() {
+            try {
+              // publicディレクトリ内のすべてのHTMLファイルを検索
+              const htmlFiles = await findHtmlFiles('public');
+              console.log(`${htmlFiles.length} HTMLファイルが見つかりました`);
+
+              // すべてのファイルのリンクを並行してチェック
+              const results = await Promise.all(htmlFiles.map(file => checkFileLinks(file)));
+
+              // 壊れたリンクがあるファイルのみをフィルタリング
+              const filesWithBrokenLinks = results.filter(result => result.brokenLinks.length > 0);
+
+              // マークダウン形式で結果を出力
+              let markdown = '| ファイル名 | リンク切れパス |\n|----------|-------------|\n';
+              let hasBrokenLinks = false;
+
+              for (const result of filesWithBrokenLinks) {
+                for (const link of result.brokenLinks) {
+                  hasBrokenLinks = true;
+                  markdown += `| ${result.filePath} | ${link.url} |\n`;
+                }
+              }
+
+              // 結果をファイルに書き込み
+              if (hasBrokenLinks) {
+                await writeFile('broken_links_result.md', markdown);
+                console.log('::set-output name=found_broken_links::true');
+              } else {
+                await writeFile('broken_links_result.md', 'リンク切れは見つかりませんでした');
+                console.log('::set-output name=found_broken_links::false');
+              }
+            } catch (error) {
+              console.error('エラーが発生しました:', error);
+              process.exit(1);
+            }
+          }
+
+          main();
+          EOF
+
+      - name: Check for broken links
+        id: blc
+        run: |
+          node check-links.js
+          if grep -q "| " broken_links_result.md; then
+            echo "found_broken_links=true" >> $GITHUB_OUTPUT
+          else
+            echo "found_broken_links=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Comment on PR
+        if: steps.blc.outputs.found_broken_links == 'true'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+            const brokenLinksContent = fs.readFileSync('broken_links_result.md', 'utf8');
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `## 🔍 リンク切れが検出されました\n\n${brokenLinksContent}\n\nこれらのリンクを修正してください。`
+            });
+
+
+
+
 
       # =============================
       # HTML変更ファイル抽出
