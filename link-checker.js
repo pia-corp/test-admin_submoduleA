@@ -17,6 +17,8 @@ function getHtmlFiles(dir) {
       htmlFiles.push(filePath);
     }
   });
+  console.log(htmlFiles);
+
   return htmlFiles;
 }
 
