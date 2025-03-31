@@ -18,7 +18,7 @@ permissions: {}
 jobs:
   check-links:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 30
     permissions:
       contents: read # コードの読み込みを許可
 
@@ -43,6 +43,8 @@ jobs:
     steps:
       - name: リポジトリをチェックアウト
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
 
       - name: Node.jsセットアップ
         uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e # v3.5.1
