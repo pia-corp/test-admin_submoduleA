@@ -22,7 +22,7 @@
 # - 処理時間制限は30分です
 # =====================================================================
 
-name: PageSpeed Insights 分析
+name: CI
 
 on:
   pull_request:
@@ -33,9 +33,9 @@ on:
 # プルリクエストで起動するワークフローは、最新コード以外での実行がたいてい不要です。
 # 自動テストや静的解析はその典型で、古いコードで実行されるワークフローはムダです。
 # そこで次のように実装し、古いワークフローは自動キャンセルしましょう。
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+# concurrency:
+#   group: ${{ github.workflow }}-${{ github.ref }}
+#   cancel-in-progress: true
 
 permissions: {}
 
