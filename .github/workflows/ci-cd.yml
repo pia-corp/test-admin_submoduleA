@@ -174,6 +174,7 @@ jobs:
           args: |
             --no-progress
             --include-fragments
+            --root-dir `/home/user/${{ github.event.repository.name }}/public/`
             .
 
       - name: Provide helpful failure message
