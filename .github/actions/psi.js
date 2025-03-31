@@ -131,7 +131,7 @@ async function executeRequestsConcurrently(files, concurrentLimit = CONCURRENT_L
 
     // APIレート制限を考慮して少し待つ（オプション）
     if (i + concurrentLimit < files.length) {
-      console.log(`バッチ処理完了: ${i + concurrentLimit}/${files.length}`);
+      // console.log(`バッチ処理完了: ${i + concurrentLimit}/${files.length}`);
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
