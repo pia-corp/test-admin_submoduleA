@@ -142,7 +142,7 @@ jobs:
           node-version: '16'
 
       - name: Install dependencies
-        run: npm install broken-link-checker cheerio
+        run: npm install broken-link-checker cheerio undici web-streams-polyfill
 
       - name: Check for broken links
         id: blc
