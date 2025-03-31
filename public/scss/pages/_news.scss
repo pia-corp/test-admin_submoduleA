@@ -1,0 +1,58 @@
+@use '../global' as *;
+
+.news {
+  margin-top: rem(16);
+}
+
+.news__inner {
+}
+
+.news__heading {
+  margin-top: rem(34);
+  @include mq {
+    margin-top: rem(48);
+  }
+}
+
+.news__list {
+  display: grid;
+  grid-template-columns: 1fr;
+  margin-top: rem(16);
+  padding: rem(20) rem(12) rem(17);
+  border-radius: rem(10);
+  background-color: $white;
+  gap: 1em;
+  @include mq {
+    gap: 1.5em;
+    margin-top: rem(24);
+    padding: rem(21) rem(29) rem(23);
+  }
+}
+
+.news__item {
+  display: flex;
+  flex-direction: column;
+
+  @include mq {
+    flex-direction: row;
+    gap: 1em;
+  }
+}
+
+.news__date,
+.news__title {
+  font-size: rem(12);
+  line-height: calc(17 / 12);
+  font-family: $thirdFont;
+  letter-spacing: 0.07em;
+  @include mq {
+    font-size: rem(16);
+    line-height: calc(24 / 16);
+  }
+}
+
+.news__date {
+}
+
+.news__title {
+}

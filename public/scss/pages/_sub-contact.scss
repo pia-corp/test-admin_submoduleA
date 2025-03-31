@@ -1,0 +1,306 @@
+@use '../global' as *;
+
+.sub-contact {
+}
+
+.sub-contact__content {
+  margin-top: rem(90);
+}
+
+.sub-contact__button {
+  display: grid;
+  place-items: center;
+  margin-top: rem(90);
+
+  @include mq {
+    margin-top: rem(80);
+  }
+}
+
+// ! default form
+.contact > p {
+  font-size: rem(14);
+  line-height: calc(22 / 14);
+
+  @include mq {
+    font-size: rem(16);
+    line-height: calc(22 / 16);
+  }
+}
+
+.contact .information {
+  text-align: center;
+}
+.contact .send_error {
+  margin-bottom: rem(48);
+  text-align: center;
+  color: $brown3;
+}
+
+.contact .error {
+  color: $brown3;
+  margin: rem(8) 0;
+  font-size: rem(14);
+
+  @include mq {
+    font-size: rem(16);
+  }
+}
+.contact .contact_table {
+  margin-top: rem(32);
+  text-align: left;
+
+  @include mq {
+    margin-top: rem(60);
+  }
+}
+.contact .contact_table tr {
+  display: block;
+  width: 100%;
+  margin-top: rem(16);
+
+  @include mq {
+    display: flex;
+    margin-top: rem(8);
+  }
+}
+.contact .contact_table tr th,
+.contact .contact_table tr td {
+  display: block;
+  align-content: center;
+  width: 100%;
+  padding: rem(20) rem(20) rem(16);
+  font-size: rem(14);
+
+  @include mq {
+    padding: rem(24) rem(30);
+    font-size: rem(16);
+  }
+}
+.contact .contact_table tr th {
+  position: relative;
+  border-radius: rem(4);
+  background-color: $white;
+
+  @include mq {
+    width: 32%;
+  }
+}
+.contact .contact_table tr th .required {
+  display: inline-block;
+  margin-left: rem(10);
+  padding: rem(3) rem(12) rem(1);
+  border-radius: rem(16);
+  background-color: $beige;
+  color: $white;
+  font-size: rem(10);
+
+  @include mq {
+    padding: rem(5) rem(12) rem(1);
+    font-size: rem(13);
+  }
+}
+.contact .contact_table tr td {
+  @include mq {
+    width: 68%;
+    vertical-align: middle;
+  }
+}
+
+.contact .contact_table tr td ul {
+  display: flex;
+  flex-direction: column;
+  gap: rem(18) rem(40);
+
+  @include mq {
+    flex-direction: row;
+    flex-wrap: wrap;
+  }
+}
+
+.contact .contact_table tr td ul li label input[type='radio'] {
+  opacity: 0;
+  position: absolute;
+
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+.contact .contact_table tr td ul li label input:checked + span::after {
+  opacity: 1;
+}
+.contact .contact_table tr td ul li label span {
+  position: relative;
+  padding-left: rem(24);
+  font-size: rem(14);
+
+  @include mq {
+    padding-left: rem(28);
+    font-size: rem(16);
+  }
+}
+.contact .contact_table tr td ul li label span::before,
+.contact .contact_table tr td ul li label span::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  border-radius: 100%;
+}
+.contact .contact_table tr td ul li label span::before {
+  left: 0;
+  width: rem(14);
+  height: rem(14);
+  border: rem(1) solid $gray2;
+  background: $white;
+
+  @include mq {
+    width: rem(16);
+    height: rem(16);
+  }
+}
+.contact .contact_table tr td ul li label span::after {
+  opacity: 0;
+  left: rem(2);
+  width: rem(10);
+  height: rem(10);
+  background-color: $beige;
+  transition: all 0.3s;
+
+  @include mq {
+    width: rem(12);
+    height: rem(12);
+  }
+}
+.contact .contact_table tr td input[type='text'],
+.contact .contact_table tr td textarea {
+  width: 100%;
+  padding: rem(10);
+  border: 1px solid $gray2;
+  border-radius: rem(4);
+  font-size: rem(14);
+
+  @include mq {
+    font-size: rem(16);
+  }
+}
+
+.contact .contact-content {
+  margin-top: rem(32);
+
+  @include mq {
+    margin-top: rem(64);
+    text-align: center;
+  }
+}
+.contact .contact-content .contact-ttl {
+  font-size: rem(14);
+
+  @include mq {
+    font-size: rem(16);
+  }
+}
+.contact .contact-content .contact-ttl .aplivacy {
+  display: inline-block;
+  text-decoration: underline;
+}
+
+.contact .contact-content label input[type='checkbox'] {
+  opacity: 0;
+  position: absolute;
+
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+}
+.contact .contact-content label {
+  display: grid;
+  place-items: center;
+  margin-top: rem(24);
+
+  @include mq {
+    margin-top: rem(32);
+  }
+}
+.contact .contact-content label span {
+  display: inline-block;
+  position: relative;
+  padding-left: rem(30);
+  font-size: rem(14);
+
+  @include mq {
+    font-size: rem(16);
+  }
+}
+.contact .contact-content label span::before,
+.contact .contact-content label span::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  transition: all 0.3s;
+}
+.contact .contact-content label span::before {
+  left: 0;
+  width: rem(14);
+  height: rem(14);
+  border: 1px solid $black;
+  background: $white;
+
+  @include mq {
+    width: rem(16);
+    height: rem(16);
+  }
+}
+.contact .contact-content label span::after {
+  opacity: 0;
+  left: rem(2);
+  width: rem(10);
+  height: rem(10);
+  background: $beige;
+
+  @include mq {
+    width: rem(12);
+    height: rem(12);
+  }
+}
+.contact .contact-content label input:checked + span::after {
+  opacity: 1;
+}
+
+.contact .contact-submit-box {
+  display: grid;
+  place-items: center;
+  margin-top: rem(32);
+
+  @include mq {
+    margin-top: rem(48);
+  }
+}
+
+.contact .contact-submit-box button {
+  display: inline-block;
+  min-width: rem(335);
+  padding-top: rem(24);
+  padding-bottom: rem(20);
+  border-radius: rem(80);
+  box-shadow: 0 rem(2) rem(4) $beige;
+  background-color: $beige;
+  color: $white;
+  font-size: rem(14);
+  cursor: pointer;
+
+  @include mq {
+    min-width: rem(400);
+    border-radius: rem(100);
+    font-size: rem(16);
+  }
+}
+
+.contact .thanks {
+  margin-top: rem(30);
+
+  @include mq {
+    margin-top: rem(60);
+  }
+}

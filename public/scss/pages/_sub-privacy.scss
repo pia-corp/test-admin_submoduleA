@@ -1,0 +1,56 @@
+@use '../global' as *;
+
+.sub-privacy {
+}
+
+.sub-privacy__inner.inner {
+  @include mq {
+    max-width: calc(rem(880) + $padding-pc * 2);
+  }
+}
+
+.sub-privacy__content {
+  margin-top: rem(40);
+  font-size: rem(14);
+
+  @include mq {
+    margin-top: rem(64);
+  }
+}
+
+.sub-privacy__title {
+  color: $brown3;
+  font-weight: $regular;
+  font-size: rem(18);
+}
+
+.sub-privacy__subtitle {
+  font-weight: $regular;
+  font-size: rem(15);
+}
+
+.sub-privacy__item {
+  margin-top: rem(20);
+}
+.sub-privacy__item:not(:last-child) {
+  padding-bottom: rem(20);
+  border-bottom: rem(1) solid $gray3;
+}
+
+.sub-privacy__desc {
+  padding-left: 0.8em;
+}
+
+.sub-privacy__text {
+  margin-top: 1em;
+}
+
+.sub-privacy__button {
+  display: grid;
+  place-items: center;
+  margin-top: rem(90);
+
+  @include mq {
+    margin-top: rem(80);
+  }
+}

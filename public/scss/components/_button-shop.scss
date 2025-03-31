@@ -1,0 +1,70 @@
+@use '../global' as *;
+
+.button-shop {
+  display: inline-block;
+  width: 100%;
+  max-width: rem(355);
+  padding: rem(6) rem(20);
+  border-radius: rem(100);
+  background-image: linear-gradient(to left, $grBeige1 0%, $grBeige2 50%, $grBeige1 100%);
+  text-align: center;
+  transition:
+    padding 0.3s,
+    border-radius 0.5s;
+  @include mq {
+    max-width: rem(480);
+  }
+}
+
+.button-shop__heading {
+  display: block;
+  width: 100%;
+  color: $gray3;
+  letter-spacing: 0.07em;
+  font-size: rem(32);
+  font-family: $secondFont;
+  text-transform: uppercase;
+}
+
+.button-shop__list {
+  display: none;
+  margin-top: rem(26);
+}
+
+.button-shop__item + .button-shop__item {
+  margin-top: rem(12);
+}
+
+.button-shop__link {
+  background-color: $white;
+  border-radius: rem(20);
+  padding: rem(10) rem(24) rem(6);
+}
+
+.button-shop.is-open {
+  border-radius: rem(20);
+  padding-bottom: rem(27);
+}
+
+// Always opened element
+.button-shop.is-opened {
+  border-radius: rem(20);
+  padding-bottom: rem(27);
+  .button-shop__list {
+    display: block;
+  }
+}
+
+// ! ここから下は、各ページで上書き用
+.sub-purenude .button-shop {
+  background-image: linear-gradient(to left, $grBeige1 0%, $grBeige2 50%, $grBeige1 100%);
+}
+.sub-brownchou .button-shop {
+  background-image: linear-gradient(to left, $grBlue1 0%, $grBlue2 50%, $grBlue1 100%);
+}
+.sub-silky .button-shop {
+  background-image: linear-gradient(to left, $grPurple1 0%, $grPurple2 50%, $grPurple1 100%);
+}
+.sub-cotton .button-shop {
+  background-image: linear-gradient(to left, $grYellow1 0%, $grYellow2 50%, $grYellow1 100%);
+}

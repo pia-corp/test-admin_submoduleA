@@ -1,0 +1,74 @@
+@use '../global' as *;
+
+.fv {
+  margin-top: $headerHeight-sp;
+
+  @include mq {
+    margin-top: 0;
+  }
+}
+
+.fv__img {
+  width: 100%;
+  aspect-ratio: 375 / 563;
+
+  @include mq {
+    height: 100dvh;
+    min-height: rem(640);
+    max-height: 71.2vw;
+    aspect-ratio: 1832 / 840;
+  }
+  picture,
+  img {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: inherit;
+    object-fit: cover;
+    object-position: 50% 0%;
+  }
+}
+
+.fv__list {
+  display: flex;
+  justify-content: center;
+  gap: rem(12);
+
+  @include mq {
+    gap: rem(24);
+    margin-top: rem(10);
+  }
+}
+
+.fv__item {
+  font-size: rem(10);
+  font-family: $thirdFont;
+
+  @include mq {
+    font-size: rem(16);
+  }
+}
+.fv__item::before {
+  content: '';
+  display: inline-block;
+  width: rem(8);
+  height: rem(8);
+  margin-right: rem(2);
+  border: rem(1) solid $gray2;
+  border-radius: rem(1);
+
+  @include mq {
+    width: rem(12);
+    height: rem(12);
+    margin-right: rem(4);
+  }
+}
+
+.fv__button {
+  display: grid;
+  place-items: center;
+  margin-top: rem(12);
+
+  @include mq {
+    margin-top: rem(30);
+  }
+}

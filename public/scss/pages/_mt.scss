@@ -1,0 +1,78 @@
+@use '../global' as *;
+
+.mt__top-feature {
+  margin-top: rem(60);
+
+  @include mq {
+    margin-top: rem(120);
+  }
+}
+.mt__sub-feature {
+  margin-top: rem(24);
+
+  @include mq {
+    margin-top: rem(32);
+  }
+}
+
+.mt__top-spec {
+  margin-top: rem(40);
+
+  @include mq {
+    margin-top: initial;
+  }
+}
+.mt__sub-spec {
+  margin-top: rem(20);
+
+  @include mq {
+    margin-top: rem(4);
+  }
+}
+
+.mt__sub-breadcrumb {
+  margin-top: rem(24);
+  @include mq {
+    margin-top: rem(64);
+  }
+}
+
+.mt__top-closing {
+  margin-top: rem(40);
+
+  @include mq {
+    margin-top: rem(90);
+  }
+}
+.mt__sub-closing {
+  margin-top: rem(50);
+
+  @include mq {
+    margin-top: rem(100);
+  }
+}
+
+.mt__top-footer {
+  margin-top: rem(42);
+
+  @include mq {
+    margin-top: rem(80);
+  }
+}
+.mt__sub-footer {
+  margin-top: rem(24);
+
+  @include mq {
+    margin-top: rem(52);
+  }
+}
+
+.mt__sub-company,
+.mt__sub-privacy,
+.mt__sub-contact {
+  margin-top: calc(rem(44) + $headerHeight-sp);
+
+  @include mq {
+    margin-top: rem(312);
+  }
+}

@@ -1,0 +1,36 @@
+@use '../global' as *;
+
+.button-more {
+  text-align: center;
+  min-width: rem(213);
+  display: inline-block;
+  padding: rem(4) rem(24);
+  border-radius: rem(30);
+  background-image: linear-gradient(to left, $grBeige1 0%, $grBeige2 50%, $grBeige1 100%);
+  color: $gray3;
+  font-size: rem(32);
+  line-height: 1;
+  font-family: $secondFont;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  @include mq {
+    min-width: rem(320);
+    padding: rem(14) rem(24);
+  }
+}
+
+.button-more.button-more--purenude {
+  background-image: linear-gradient(to left, $grBeige1 0%, $grBeige2 50%, $grBeige1 100%);
+}
+
+.button-more.button-more--brownchou {
+  background-image: linear-gradient(to left, $grBlue1 0%, $grBlue2 50%, $grBlue1 100%);
+}
+
+.button-more.button-more--silky {
+  background-image: linear-gradient(to left, $grPurple1 0%, $grPurple2 50%, $grPurple1 100%);
+}
+
+.button-more.button-more--cotton {
+  background-image: linear-gradient(to left, $grYellow1 0%, $grYellow2 50%, $grYellow1 100%);
+}

@@ -1,0 +1,40 @@
+@use '../global' as *;
+
+.movie {
+  margin-top: rem(32);
+
+  @include mq {
+    margin-top: rem(62);
+  }
+}
+
+.movie__inner.inner {
+  @include mq {
+    max-width: calc(rem(640) + $padding-pc * 2);
+  }
+}
+
+.movie__heading {
+}
+
+.movie__video {
+  width: 100%;
+  aspect-ratio: 355 / 200;
+  margin-top: rem(16);
+  overflow: hidden;
+
+  @include mq {
+    aspect-ratio: 640 / 360;
+    margin-inline: auto;
+    margin-top: rem(52);
+  }
+
+  iframe {
+    transform: scale(1.01);
+    width: 100%;
+    height: 100%;
+    aspect-ratio: inherit;
+    object-fit: cover;
+    object-position: 50% 50%;
+  }
+}

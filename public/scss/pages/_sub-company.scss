@@ -1,0 +1,61 @@
+@use '../global' as *;
+
+.sub-company {
+}
+
+.sub-company__inner.inner {
+  @include mq {
+    max-width: calc(rem(998) + $padding-pc * 2);
+  }
+}
+
+.sub-company__list {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: rem(1);
+  margin-inline: auto;
+  margin-top: rem(40);
+  border: rem(1) solid $gray3;
+  background-color: $gray3;
+
+  @include mq {
+    grid-template-columns: 37fr 63fr;
+    margin-top: rem(64);
+  }
+}
+
+.sub-company__term,
+.sub-company__description {
+  display: grid;
+  justify-content: start;
+  align-items: center;
+  padding: rem(6) rem(24) rem(2);
+  background-color: $white;
+  font-size: rem(14);
+  line-height: calc(22 / 14);
+
+  @include mq {
+    padding: rem(24) rem(24) rem(16);
+  }
+}
+.sub-company__term {
+  background-color: $pink;
+  color: $white;
+
+  @include mq {
+    justify-content: center;
+  }
+}
+.sub-company__description {
+  color: $brown2;
+}
+
+.sub-company__button {
+  display: grid;
+  place-items: center;
+  margin-top: rem(90);
+
+  @include mq {
+    margin-top: rem(80);
+  }
+}

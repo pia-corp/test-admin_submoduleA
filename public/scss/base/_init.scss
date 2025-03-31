@@ -1,0 +1,47 @@
+@use '../global' as *;
+
+body {
+  background-color: $white;
+  color: $black;
+  font-weight: $regular;
+  line-height: 1.5;
+  font-family: $baseFont;
+
+  background-image: url(../images/top/bg-sp.jpg);
+  background-position: 0% 60dvh;
+  background-size: cover;
+  background-repeat: repeat;
+  @include mq {
+    background-position: top;
+    background-image: url(../images/top/bg-pc.jpg);
+  }
+}
+
+// ! ここから下は、各ページで上書き用
+.sub-purenude {
+  background-image: url(../images/purenude/bg-sp.jpg);
+  @include mq {
+    background-image: url(../images/purenude/bg-pc.jpg);
+  }
+}
+
+.sub-brownchou {
+  background-image: url(../images/brownchou/bg-sp.jpg);
+  @include mq {
+    background-image: url(../images/brownchou/bg-pc.jpg);
+  }
+}
+
+.sub-silky {
+  background-image: url(../images/silky/bg-sp.jpg);
+  @include mq {
+    background-image: url(../images/silky/bg-pc.jpg);
+  }
+}
+
+.sub-cotton {
+  background-image: url(../images/cotton/bg-sp.jpg);
+  @include mq {
+    background-image: url(../images/cotton/bg-pc.jpg);
+  }
+}

@@ -1,0 +1,29 @@
+@use '../global' as *;
+
+.sub-fv {
+  margin-top: $headerHeight-sp;
+  @include mq {
+    margin-top: 0;
+  }
+}
+
+.sub-fv__img {
+  aspect-ratio: 375 / 558;
+  width: 100%;
+
+  @include mq {
+    aspect-ratio: 1832 / 800;
+    height: 100dvh;
+    min-height: rem(640);
+    max-height: 67.8vw;
+  }
+
+  picture,
+  img {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: inherit;
+    object-fit: cover;
+    object-position: 50% 0%;
+  }
+}

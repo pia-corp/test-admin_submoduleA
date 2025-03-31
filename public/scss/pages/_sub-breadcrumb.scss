@@ -1,0 +1,24 @@
+@use '../global' as *;
+
+.sub-breadcrumb {
+  padding-top: rem(8);
+  padding-bottom: rem(8);
+  background-color: $white;
+}
+
+.sub-breadcrumb__list {
+  display: flex;
+  gap: rem(4);
+}
+
+.sub-breadcrumb__item + .sub-breadcrumb__item::before {
+  content: '>';
+  color: $black;
+  font-size: rem(12);
+}
+
+.sub-breadcrumb__link {
+  display: inline-block;
+  font-size: rem(12);
+  font-family: $thirdFont;
+}

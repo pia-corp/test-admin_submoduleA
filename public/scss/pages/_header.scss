@@ -1,0 +1,83 @@
+@use '../global' as *;
+
+.header {
+  width: 100%;
+  height: $headerHeight-sp;
+  background-color: $beige;
+  position: fixed;
+  top: 0;
+  z-index: zi('header');
+  @include mq {
+    background-color: transparent;
+    height: $headerHeight-pc;
+  }
+}
+
+.header__inner {
+  height: inherit;
+  padding-inline: $padding-sp;
+
+  @include mq {
+    padding-left: rem(30);
+    padding-right: rem(10);
+  }
+}
+
+.header__wrap {
+  height: inherit;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  @include mq {
+    align-items: flex-start;
+  }
+}
+
+.header__logo {
+  width: rem(117);
+  @include mq {
+    width: rem(353);
+    margin-top: rem(30);
+  }
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 50% 50%;
+  }
+}
+
+.header__list {
+  display: flex;
+  gap: rem(16);
+  @include mq {
+    gap: rem(12);
+    margin-top: rem(20);
+  }
+}
+
+// ! ここから下は、各ページで上書き用
+.sub-purenude .header {
+  background-color: $beige;
+  @include mq {
+    background-color: transparent;
+  }
+}
+.sub-brownchou .header {
+  background-color: $blue;
+  @include mq {
+    background-color: transparent;
+  }
+}
+.sub-silky .header {
+  background-color: $purple;
+  @include mq {
+    background-color: transparent;
+  }
+}
+.sub-cotton .header {
+  background-color: $orange;
+  @include mq {
+    background-color: transparent;
+  }
+}

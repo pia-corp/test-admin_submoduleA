@@ -93,10 +93,13 @@ jobs:
             }
 
             const comment = `
-              ## Broken Links Report
+              ## リンク切れレポート
               | ファイル名 | リンク切れパス |
               | :-- | :-- |
               ${message}
+
+              ## 注意
+              ・リンク切れは最大100件まで表示されます。
             `;
             github.rest.issues.createComment({
               ...context.repo,
