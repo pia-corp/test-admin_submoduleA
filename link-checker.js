@@ -198,8 +198,8 @@ function extractUrlsFromJsonld(jsonObj) {
 async function checkSingleLink(url, filePath, brokenLinks, callback) {
   try {
     // `http://www.${repository_name}` から始まるURLを変換
-    // const repoPattern = new RegExp(`^http://www\\.${repositoryName}`, "i");
-    const repoPattern = new RegExp(`^http://www\.test-admin_submoduleA`, "i");
+    const repoPattern = new RegExp(`^https://www\.${repositoryName}`, "i");
+    // const repoPattern = new RegExp(`^https://www\.test-admin_submoduleA`, "i");
     if (repoPattern.test(url)) {
       url = url.replace(repoPattern, "http://localhost:8081");
     }
