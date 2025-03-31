@@ -3,6 +3,7 @@ const fs = require('fs').promises;
 const fsSync = require('fs'); // 一部の操作は同期処理のままにする
 const path = require('path');
 const cheerio = require('cheerio');
+const repositoryName = process.env.REPOSITORY_NAME || "localhost:8081"; // 環境変数から取得
 
 // デバッグ用のタイムスタンプ付きロガー
 const debug = {
@@ -195,6 +196,12 @@ function extractUrlsFromJsonld(jsonObj) {
 // 追加: 単一のリンクをチェックする関数
 async function checkSingleLink(url, filePath, brokenLinks, callback) {
   try {
+    // `http://www.${repository_name}` から始まるURLを変換
+    const repoPattern = new RegExp(`^http://www\\.${repositoryName}`, "i");
+    if (repoPattern.test(url)) {
+      url = url.replace(repoPattern, "http://localhost:8081");
+    }
+
     // 相対パスをフルパスに変換
     if (url.startsWith('/')) {
       url = `http://localhost:8081${url}`;
