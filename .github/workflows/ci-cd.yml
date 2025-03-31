@@ -147,7 +147,7 @@ jobs:
       - name: Check for broken links
         id: blc
         run: |
-          node .github/actions/link-cheker.js
+          node .github/actions/link-checker.js
           if grep -q "| " broken_links_result.md; then
             echo "found_broken_links=true" >> $GITHUB_OUTPUT
           else
