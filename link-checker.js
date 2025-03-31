@@ -22,6 +22,10 @@ const debug = {
 
 const publicDir = path.join(__dirname, 'public/');
 
+// リンク制限カウンター
+let totalBrokenLinksCount = 0;
+const BROKEN_LINKS_LIMIT = 11;
+
 // ファイル探索を非同期に変更
 async function getHtmlFiles(dir) {
   // debug.log(`ディレクトリ探索開始: ${dir}`);
@@ -69,18 +73,63 @@ function removeDuplicateLinks(brokenLinks) {
   return brokenLinks;
 }
 
+// GitHubへの通知関数を修正
 async function notifyGitHub(brokenLinks) {
   // debug.log(`GitHub通知処理開始`);
   const outputPath = process.env.GITHUB_OUTPUT;
+
+  // 100件のみを表示するために処理
+  let limitedBrokenLinks = {};
+  let displayedCount = 0;
+  let hasMoreThan100 = false;
+
+  // 全体のカウントを取得
+  let totalLinks = 0;
+  for (const file in brokenLinks) {
+    if (brokenLinks.hasOwnProperty(file)) {
+      totalLinks += brokenLinks[file].length;
+    }
+  }
+
+  hasMoreThan100 = totalLinks > 100;
+
+  // 100件だけを出力用に抽出
+  for (const file in brokenLinks) {
+    if (brokenLinks.hasOwnProperty(file) && displayedCount < 100) {
+      if (!limitedBrokenLinks[file]) {
+        limitedBrokenLinks[file] = [];
+      }
+
+      for (const link of brokenLinks[file]) {
+        if (displayedCount < 100) {
+          limitedBrokenLinks[file].push(link);
+          displayedCount++;
+        } else {
+          break;
+        }
+      }
+
+      // 空の配列は削除
+      if (limitedBrokenLinks[file].length === 0) {
+        delete limitedBrokenLinks[file];
+      }
+    }
+  }
+
+  // 101件以上ある場合の付帯情報を追加
+  if (hasMoreThan100) {
+    limitedBrokenLinks['__info__'] = [`リンク切れは合計${totalLinks}件あります。上記は最初の100件のみを表示しています。`];
+  }
+
   if (outputPath) {
-    const errors = JSON.stringify(brokenLinks);
+    const errors = JSON.stringify(limitedBrokenLinks);
     // debug.log(`GitHubアクション出力ファイルパス: ${outputPath}`);
     fsSync.appendFileSync(outputPath, `errors=${errors}\n`);
     // debug.log(`GitHubアクション出力ファイルに書き込み完了`);
   } else {
     // debug.log(`GitHubアクション出力ファイルパスが存在しません`);
   }
-  // debug.info(`GitHub Notice: Broken links detected - ${JSON.stringify(brokenLinks)}`);
+  // debug.info(`GitHub Notice: Broken links detected - ${JSON.stringify(limitedBrokenLinks)}`);
 }
 
 // メイン関数を作成し、非同期処理を実行
@@ -91,6 +140,7 @@ async function main() {
   const checkedFiles = [];
   const failedFiles = [];
   const linkCounts = { total: 0, broken: 0 };
+  let shouldStopChecking = false;
 
   try {
     // debug.log(`HTMLファイル探索開始: ${publicDir}`);
@@ -98,62 +148,87 @@ async function main() {
     // debug.info(`チェック対象HTMLファイル数: ${htmlFiles.length}`);
 
     // SiteCheckerをPromise化する
-    const siteCheckerPromise = (url, originalPath) => {
+    const siteCheckerPromise = (url, originalPath, checker) => {
       return new Promise((resolve, reject) => {
         // debug.log(`リンクチェック開始: ${url} (${originalPath})`);
         const urlCheckStartTime = Date.now();
         let urlLinkCount = 0;
         let urlBrokenCount = 0;
 
-        const checker = new SiteChecker({
-          excludedKeywords: ['https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
-          excludeExternalLinks: false,
-          excludeInternalLinks: false,
-          excludeLinksToSamePage: true,
-          filterLevel: 3,
-          acceptedSchemes: ["http", "https"],
-          requestMethod: "get",
-          maxSocketsPerHost: 5, // 同一ホストへの接続数を制限
-          timeout: 10000 // タイムアウト値を設定（10秒）
-        }, {
-          link: (result) => {
-            urlLinkCount++;
-            linkCounts.total++;
-
-            if (result.broken) {
-              urlBrokenCount++;
-              linkCounts.broken++;
-
-              // 正規表現を使用してプロトコル + ドメイン部分を削除
-              const file = result.base.original.replace(/^https?:\/\/[^/]+/, '');
-
-              // debug.log(`リンク切れ検出: ${result.url.original} in ${file}`);
-
-              if (file !== "/") {
-                if (!brokenLinks[file]) {
-                  brokenLinks[file] = [];
-                }
-                brokenLinks[file].push(result.url.original);
-              }
-            }
-          },
-          end: () => {
-            const urlCheckEndTime = Date.now();
-            const urlCheckDuration = (urlCheckEndTime - urlCheckStartTime) / 1000;
-            // debug.log(`リンクチェック完了: ${url} - 処理時間: ${urlCheckDuration}秒, 総リンク数: ${urlLinkCount}, 切れたリンク: ${urlBrokenCount}`);
-            checkedFiles.push(url);
-            resolve();
-          },
-          error: (error) => {
-            // debug.error(`リンクチェックエラー ${url}: ${error}`);
-            failedFiles.push({ url, error: error.message || 'Unknown error' });
-            reject(error);
-          }
-        });
-
         checker.enqueue(url);
+
+        resolve();
       });
     };
+
+    // チェッカーのインスタンスを作成
+    const checkerInstance = new SiteChecker({
+      excludedKeywords: ['https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
+      excludeExternalLinks: false,
+      excludeInternalLinks: false,
+      excludeLinksToSamePage: true,
+      filterLevel: 3,
+      acceptedSchemes: ["http", "https"],
+      requestMethod: "get",
+      maxSocketsPerHost: 5, // 同一ホストへの接続数を制限
+      timeout: 10000 // タイムアウト値を設定（10秒）
+    }, {
+      link: (result) => {
+        urlLinkCount++;
+        linkCounts.total++;
+
+        if (result.broken) {
+          urlBrokenCount++;
+          linkCounts.broken++;
+          totalBrokenLinksCount++;
+
+          // 正規表現を使用してプロトコル + ドメイン部分を削除
+          const file = result.base.original.replace(/^https?:\/\/[^/]+/, '');
+
+          // debug.log(`リンク切れ検出: ${result.url.original} in ${file}`);
+
+          if (file !== "/") {
+            if (!brokenLinks[file]) {
+              brokenLinks[file] = [];
+            }
+            brokenLinks[file].push(result.url.original);
+          }
+
+          // リンク切れが101件に達したらフラグをセット
+          if (totalBrokenLinksCount >= BROKEN_LINKS_LIMIT && !shouldStopChecking) {
+            shouldStopChecking = true;
+            debug.info(`リンク切れが${BROKEN_LINKS_LIMIT}件に達したため、調査を中止します`);
+            checkerInstance.pause(); // チェックを一時停止
+
+            // 結果を処理して終了
+            processFinalResults();
+          }
+        }
+      },
+      end: () => {
+        const urlCheckEndTime = Date.now();
+        const urlCheckDuration = (urlCheckEndTime - urlCheckStartTime) / 1000;
+        // debug.log(`リンクチェック完了: ${url} - 処理時間: ${urlCheckDuration}秒, 総リンク数: ${urlLinkCount}, 切れたリンク: ${urlBrokenCount}`);
+        checkedFiles.push(url);
+      },
+      error: (error) => {
+        // debug.error(`リンクチェックエラー ${url}: ${error}`);
+        failedFiles.push({ url, error: error.message || 'Unknown error' });
+      }
+    });
+
+    // 結果を処理して終了する関数
+    async function processFinalResults() {
+      const brokenLinksAfterDedup = removeDuplicateLinks(brokenLinks); // 重複を削除
+      await notifyGitHub(brokenLinksAfterDedup);
+
+      const endTime = Date.now();
+      const duration = (endTime - startTime) / 1000;
+      debug.info(`リンクチェック完了 - 総処理時間: ${duration}秒`);
+      debug.info(`検出されたリンク統計: 総数=${linkCounts.total}, 切れたリンク=${linkCounts.broken}`);
+
+      process.exit(0);
+    }
 
     // ファイルごとの処理を並行して実行（同時実行数を制限）
     const concurrentLimit = 5; // 同時に処理するファイル数を制限
@@ -171,13 +246,16 @@ async function main() {
     // debug.log(`処理チャンク数: ${chunks.length}`);
 
     // チャンクごとに処理（チャンク内では並列、チャンク間では直列）
-    for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+    for (let chunkIndex = 0; chunkIndex < chunks.length && !shouldStopChecking; chunkIndex++) {
       const chunk = chunks[chunkIndex];
       const chunkStartTime = Date.now();
 
       // debug.log(`チャンク ${chunkIndex + 1}/${chunks.length} 処理開始 (ファイル数: ${chunk.length})`);
 
       const chunkPromises = chunk.map(async (filePath) => {
+        // 101件に達したらスキップ
+        if (shouldStopChecking) return;
+
         try {
           const fileStartTime = Date.now();
           // debug.log(`ファイル処理開始: ${filePath}`);
@@ -205,7 +283,7 @@ async function main() {
           const url = `http://localhost:8081/${relativeFilePath}`;
 
           // サイトチェッカー実行
-          await siteCheckerPromise(url, filePath);
+          await siteCheckerPromise(url, filePath, checkerInstance);
 
           const fileEndTime = Date.now();
           const fileDuration = (fileEndTime - fileStartTime) / 1000;
@@ -219,7 +297,6 @@ async function main() {
         } catch (error) {
           // debug.error(`ファイル処理エラー ${filePath}: ${error}`);
           failedFiles.push({ filePath, error: error.message || 'Unknown error' });
-          throw error;
         }
       });
 
@@ -235,32 +312,19 @@ async function main() {
       }
     }
 
-    const totalEndTime = Date.now();
-    const totalDuration = (totalEndTime - totalStartTime) / 1000;
-    // debug.info(`リンクチェック完了 - 総処理時間: ${totalDuration}秒`);
-    // debug.info(`検出されたリンク統計: 総数=${linkCounts.total}, 切れたリンク=${linkCounts.broken}`);
+    // 101件未満で全ての処理が終わった場合
+    if (!shouldStopChecking) {
+      const totalEndTime = Date.now();
+      const totalDuration = (totalEndTime - totalStartTime) / 1000;
+      // debug.info(`リンクチェック完了 - 総処理時間: ${totalDuration}秒`);
+      // debug.info(`検出されたリンク統計: 総数=${linkCounts.total}, 切れたリンク=${linkCounts.broken}`);
 
-    const brokenLinksAfterDedup = removeDuplicateLinks(brokenLinks); // 重複を削除
-    await notifyGitHub(brokenLinksAfterDedup);
-
-    // // 失敗したファイルの報告
-    // if (failedFiles.length > 0) {
-    //   debug.error(`処理に失敗したファイル: ${failedFiles.length}件`);
-    //   failedFiles.forEach(fail => {
-    //     debug.error(`- ${fail.filePath || fail.url}: ${fail.error}`);
-    //   });
-    // }
-
-    // debug.info(`チェック完了したファイル: ${checkedFiles.length}件`);
-    // checkedFiles.forEach(file => debug.log(`- ${file}`));
+      const brokenLinksAfterDedup = removeDuplicateLinks(brokenLinks); // 重複を削除
+      await notifyGitHub(brokenLinksAfterDedup);
+    }
 
   } catch (error) {
     // debug.error(`リンクチェック処理中に致命的なエラーが発生: ${error}`);
-
-    // // エラーのスタックトレースを表示
-    // if (error.stack) {
-    //   debug.error(`エラースタックトレース: ${error.stack}`);
-    // }
 
     // それでも可能であれば結果を出力
     if (Object.keys(brokenLinks).length > 0) {
@@ -275,11 +339,6 @@ async function main() {
 // メイン関数の実行
 main().catch(error => {
   // debug.error(`メイン関数で未処理のエラーが発生: ${error}`);
-
-  // // エラーのスタックトレースを表示
-  // if (error.stack) {
-  //   debug.error(`エラースタックトレース: ${error.stack}`);
-  // }
 
   // プロセスの使用メモリを表示
   const memoryUsage = process.memoryUsage();
