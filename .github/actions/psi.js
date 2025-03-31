@@ -73,8 +73,6 @@ const getScores = async (url, fileName) => {
       seo: Math.round(categories.seo.score * 100)
     };
 
-    console.log(`[${fileName}] 計測完了`);
-
     return {
       url,
       fileName,
