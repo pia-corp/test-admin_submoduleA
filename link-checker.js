@@ -149,14 +149,25 @@ async function main() {
 
     // SiteCheckerをPromise化する
     const siteCheckerPromise = (url, originalPath, checker) => {
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve) => {
         // debug.log(`リンクチェック開始: ${url} (${originalPath})`);
         const urlCheckStartTime = Date.now();
+
+        // ここで変数を定義 - これが重要な修正点
         let urlLinkCount = 0;
         let urlBrokenCount = 0;
 
-        checker.enqueue(url);
+        // このurl特有のリンクカウントを追跡するためのクロージャーを作成
+        checker.linkCounters = {
+          increment: () => urlLinkCount++,
+          getBroken: () => urlBrokenCount++,
+          getTotal: () => urlLinkCount,
+          getBrokenTotal: () => urlBrokenCount,
+          getStartTime: () => urlCheckStartTime,
+          getUrl: () => url
+        };
 
+        checker.enqueue(url);
         resolve();
       });
     };
@@ -174,11 +185,19 @@ async function main() {
       timeout: 10000 // タイムアウト値を設定（10秒）
     }, {
       link: (result) => {
-        urlLinkCount++;
+        // リンクカウンターをインクリメント
+        if (checkerInstance.linkCounters) {
+          checkerInstance.linkCounters.increment();
+        }
+
         linkCounts.total++;
 
         if (result.broken) {
-          urlBrokenCount++;
+          // 壊れたリンクカウンターをインクリメント
+          if (checkerInstance.linkCounters) {
+            checkerInstance.linkCounters.getBroken();
+          }
+
           linkCounts.broken++;
           totalBrokenLinksCount++;
 
@@ -206,12 +225,23 @@ async function main() {
         }
       },
       end: () => {
-        const urlCheckEndTime = Date.now();
-        const urlCheckDuration = (urlCheckEndTime - urlCheckStartTime) / 1000;
-        // debug.log(`リンクチェック完了: ${url} - 処理時間: ${urlCheckDuration}秒, 総リンク数: ${urlLinkCount}, 切れたリンク: ${urlBrokenCount}`);
-        checkedFiles.push(url);
+        if (checkerInstance.linkCounters) {
+          const url = checkerInstance.linkCounters.getUrl();
+          const urlCheckStartTime = checkerInstance.linkCounters.getStartTime();
+          const urlLinkCount = checkerInstance.linkCounters.getTotal();
+          const urlBrokenCount = checkerInstance.linkCounters.getBrokenTotal();
+
+          const urlCheckEndTime = Date.now();
+          const urlCheckDuration = (urlCheckEndTime - urlCheckStartTime) / 1000;
+          // debug.log(`リンクチェック完了: ${url} - 処理時間: ${urlCheckDuration}秒, 総リンク数: ${urlLinkCount}, 切れたリンク: ${urlBrokenCount}`);
+          checkedFiles.push(url);
+        }
       },
       error: (error) => {
+        let url = "unknown";
+        if (checkerInstance.linkCounters) {
+          url = checkerInstance.linkCounters.getUrl();
+        }
         // debug.error(`リンクチェックエラー ${url}: ${error}`);
         failedFiles.push({ url, error: error.message || 'Unknown error' });
       }
