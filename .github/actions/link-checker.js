@@ -1,97 +1,124 @@
-const { SiteChecker } = require("broken-link-checker");
+const { promisify } = require('util');
 const fs = require('fs');
 const path = require('path');
+const blc = require('broken-link-checker');
 const cheerio = require('cheerio');
-const { json } = require("stream/consumers");
 
-const REPOSITORY = process.env.REPOSITORY;
-const publicDir = path.join('/home/runner/work', REPOSITORY, REPOSITORY, 'public/');
-// const publicDir = path.join(__dirname, 'public/');
+const readdir = promisify(fs.readdir);
+const readFile = promisify(fs.readFile);
+const writeFile = promisify(fs.writeFile);
+const stat = promisify(fs.stat);
 
-function getHtmlFiles(dir) {
-  let htmlFiles = [];
-  const files = fs.readdirSync(dir);
-  files.forEach(file => {
+// HTMLファイルを再帰的に検索する関数
+async function findHtmlFiles(dir) {
+  const files = await readdir(dir);
+  const htmlFiles = [];
+
+  for (const file of files) {
     const filePath = path.join(dir, file);
-    const stat = fs.statSync(filePath);
-    if (stat.isDirectory()) {
-      htmlFiles = htmlFiles.concat(getHtmlFiles(filePath));
+    const stats = await stat(filePath);
+
+    if (stats.isDirectory()) {
+      const subDirFiles = await findHtmlFiles(filePath);
+      htmlFiles.push(...subDirFiles);
     } else if (file.endsWith('.html')) {
       htmlFiles.push(filePath);
     }
-  });
+  }
+
   return htmlFiles;
 }
 
-const htmlFiles = getHtmlFiles(publicDir);
+// 一つのHTMLファイルのリンクをチェックする関数
+function checkFileLinks(filePath) {
+  return new Promise(async (resolve) => {
+    const brokenLinks = [];
+    const fileContent = await readFile(filePath, 'utf-8');
+    const $ = cheerio.load(fileContent);
+    let pendingLinks = 0;
+    let completed = false;
 
-const brokenLinks = {};
-const checkedFiles = [];
+    // すべてのaタグのhref属性を取得
+    const links = $('a').map((i, el) => $(el).attr('href')).get()
+      .filter(href => href && !href.startsWith('#') && !href.startsWith('mailto:') && !href.startsWith('tel:'));
 
-function removeDuplicateLinks(brokenLinks) {
-  for (const file in brokenLinks) {
-    if (brokenLinks.hasOwnProperty(file)) {
-      brokenLinks[file] = [...new Set(brokenLinks[file])];
+    if (links.length === 0) {
+      return resolve({ filePath, brokenLinks: [] });
     }
-  }
-}
 
-const siteChecker = new SiteChecker({
-  excludedKeywords: ['https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
-  excludeExternalLinks: false,
-  excludeInternalLinks: false,
-  excludeLinksToSamePage: true,
-  filterLevel: 3,
-  acceptedSchemes: ["http", "https"],
-  requestMethod: "get"
-}, {
-  link: (result) => {
-    if (result.broken) {
-      // 正規表現を使用してプロトコル + ドメイン部分を削除
-      const file = result.base.original.replace(/^https?:\/\/[^/]+/, '');
-
-      if (file != "/") {
-        if (!brokenLinks[file]) {
-          brokenLinks[file] = [];
+    // 相対パスをファイルシステムパスに変換
+    const urlChecker = new blc.HtmlUrlChecker(
+      { honorRobotExclusions: false, excludeExternalLinks: false },
+      {
+        link: (result) => {
+          if (result.broken) {
+            brokenLinks.push({
+              url: result.url.original,
+              reason: result.brokenReason
+            });
+          }
+          pendingLinks--;
+          if (pendingLinks === 0 && completed) {
+            resolve({ filePath, brokenLinks });
+          }
+        },
+        complete: () => {
+          completed = true;
+          if (pendingLinks === 0) {
+            resolve({ filePath, brokenLinks });
+          }
         }
-        brokenLinks[file].push(result.url.original);
       }
+    );
 
-    } else {
-      console.log(`${result.url.original}: Valid`);
+    pendingLinks = links.length;
+    for (const link of links) {
+      let url = link;
+      if (!url.startsWith('http') && !url.startsWith('file://')) {
+        // 相対パスを絶対パスに変換
+        const baseDir = path.dirname(filePath);
+        url = `file://${path.resolve(baseDir, url)}`;
+      }
+      urlChecker.enqueue(url);
     }
-  },
-  end: async () => {
-    console.log("Link checking completed.");
-    removeDuplicateLinks(brokenLinks); // 重複を削除
-    await notifyGitHub(brokenLinks);
-    console.log("Checked files:");
-    checkedFiles.forEach(file => console.log(file));
-  }
-});
-
-htmlFiles.forEach(filePath => {
-  const content = fs.readFileSync(filePath, 'utf8');
-  const $ = cheerio.load(content);
-
-  $('a[target="_blank"]').each((index, element) => {
-    $(element).attr('href', '#');
   });
-
-  const relativePath = path.relative(publicDir, filePath);
-  fs.writeFileSync(filePath, $.html());
-
-  // 検証サーバーのURLに変更
-  const checkUrl = `https://pia2024:piapiapia@piapiapia.xsrv.jp/dev/${REPOSITORY}/${relativePath}`;
-  checkedFiles.push(checkUrl);
-  siteChecker.enqueue(checkUrl);
-});
-
-async function notifyGitHub(brokenLinks) {
-  const outputPath = process.env.GITHUB_OUTPUT;
-  if (outputPath) {
-    const errors = JSON.stringify(brokenLinks);
-    fs.appendFileSync(outputPath, `errors=${errors}\n`);
-  }
-  console.log(`GitHub Notice: Broken links detected - ${JSON.stringify(brokenLinks)}`);
 }
+
+async function main() {
+  try {
+    // publicディレクトリ内のすべてのHTMLファイルを検索
+    const htmlFiles = await findHtmlFiles('public');
+    console.log(`${htmlFiles.length} HTMLファイルが見つかりました`);
+
+    // すべてのファイルのリンクを並行してチェック
+    const results = await Promise.all(htmlFiles.map(file => checkFileLinks(file)));
+
+    // 壊れたリンクがあるファイルのみをフィルタリング
+    const filesWithBrokenLinks = results.filter(result => result.brokenLinks.length > 0);
+
+    // マークダウン形式で結果を出力
+    let markdown = '| ファイル名 | リンク切れパス |\n|----------|-------------|\n';
+    let hasBrokenLinks = false;
+
+    for (const result of filesWithBrokenLinks) {
+      for (const link of result.brokenLinks) {
+        hasBrokenLinks = true;
+        markdown += `| ${result.filePath} | ${link.url} |\n`;
+      }
+    }
+
+    // 結果をファイルに書き込み
+    if (hasBrokenLinks) {
+      await writeFile('broken_links_result.md', markdown);
+      console.log('::set-output name=found_broken_links::true');
+    } else {
+      await writeFile('broken_links_result.md', 'リンク切れは見つかりませんでした');
+      console.log('::set-output name=found_broken_links::false');
+    }
+  } catch (error) {
+    console.error('エラーが発生しました:', error);
+    process.exit(1);
+  }
+}
+
+main();
