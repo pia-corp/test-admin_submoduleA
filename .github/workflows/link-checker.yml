@@ -1,0 +1,96 @@
+name: リンク切れチェック
+
+on:
+  pull_request:
+    branches:
+      - 'main'
+    types: [opened, reopened, synchronize]
+
+jobs:
+  check-broken-links:
+    runs-on: ubuntu-latest
+    steps:
+      - name: リポジトリのチェックアウト
+        uses: actions/checkout@v4.2.2
+
+      - name: Node.jsのセットアップ
+        uses: actions/setup-node@v4.3.0
+        with:
+          node-version: 'latest'
+          cache: 'npm'
+
+      - name: broken-link-checkerのインストール
+        run: npm install -g broken-link-checker
+
+      - name: 処理スクリプトのインストール
+        run: |
+          npm init -y
+          npm install glob
+          cp $GITHUB_WORKSPACE/.github/scripts/processResults.js ./processResults.js
+
+      - name: リンク切れチェック実行
+        id: blc
+        run: |
+          # 結果ディレクトリ作成
+          mkdir -p ./blc-results
+
+          # HTMLファイルを検索してチェック実行
+          find public -name "*.html" | while read file; do
+            echo "ファイル $file をチェック中..."
+            # タイムアウト設定を追加し、エラーが発生してもプロセスを継続
+            timeout 60s blc --recursive --filter-level 3 --follow --exclude "^(tel:|mailto:|javascript:)" \
+              "file://$PWD/$file" --format json > ./blc-results/$(basename "$file").json || true
+          done
+          echo "リンクチェック完了"
+
+      - name: リンク切れ結果の処理とコメント作成
+        id: process-results
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const processResults = require('./processResults.js');
+
+            // 結果を処理
+            const { commentBody, brokenLinksFound } = await processResults();
+
+            // アクション出力として設定
+            core.setOutput('comment-body', commentBody);
+            core.setOutput('broken-links-found', brokenLinksFound.toString());
+
+            // PR番号の取得
+            const prNumber = context.payload.pull_request ? context.payload.pull_request.number : context.issue.number;
+
+            // 既存のコメントを検索
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber
+            });
+
+            const botComment = comments.find(comment =>
+              comment.user.login === 'github-actions[bot]' &&
+              comment.body.includes('リンク切れチェック結果')
+            );
+
+            // 既存のコメントを更新または新規作成
+            if (botComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: botComment.id,
+                body: commentBody
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: prNumber,
+                body: commentBody
+              });
+            }
+
+            // リンク切れが見つかった場合は失敗ステータスを返す
+            if (brokenLinksFound) {
+              core.setFailed('リンク切れが見つかりました。');
+            }
