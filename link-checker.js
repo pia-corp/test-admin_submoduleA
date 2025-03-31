@@ -125,6 +125,7 @@ async function extractAndCheckMetaLinks(filePath, brokenLinks, linkCheckerCallba
 
         // JSON-LDからURLを再帰的に抽出する
         const jsonldLinks = extractUrlsFromJsonld(jsonData);
+        debug.log(`jsonld: ${jsonldLinks}`);
         metaLinks.push(...jsonldLinks);
       } catch (jsonError) {
         debug.error(`JSON-LD解析エラー ${filePath}: ${jsonError}`);
