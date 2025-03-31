@@ -1,0 +1,44 @@
+@use '../global' as *;
+
+.button-header {
+  display: inline-block;
+  font-size: rem(20);
+  font-family: $secondFont;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+
+  @include mq {
+    padding: rem(3) rem(32);
+    border-radius: rem(30);
+    background-image: linear-gradient(to left, $grBeige1 0%, $grBeige2 50%, $grBeige1 100%);
+    font-size: rem(36);
+  }
+}
+
+// ! ここから下は、各ページで上書き用
+.sub-purenude .button-header {
+  @include mq {
+    background-image: linear-gradient(to left, $grBeige1 0%, $grBeige2 50%, $grBeige1 100%);
+  }
+}
+.sub-brownchou .button-header {
+  @include mq {
+    background-image: linear-gradient(to left, $grBlue1 0%, $grBlue2 50%, $grBlue1 100%);
+  }
+}
+.sub-silky .button-header {
+  @include mq {
+    background-image: linear-gradient(to left, $grPurple1 0%, $grPurple2 50%, $grPurple1 100%);
+  }
+}
+.sub-cotton .button-header {
+  @include mq {
+    background-image: linear-gradient(to left, $grYellow1 0%, $grYellow2 50%, $grYellow1 100%);
+  }
+}
+
+.button-header.button-header--no-bg {
+  @include mq {
+    background-image: initial;
+  }
+}

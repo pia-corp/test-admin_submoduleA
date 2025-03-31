@@ -1,0 +1,32 @@
+@use '../global' as *;
+
+.closing {
+}
+
+.closing__inner.inner {
+  @include mq {
+    max-width: calc(rem(640) + $padding-pc * 2);
+  }
+}
+
+.closing__logo {
+  height: rem(80);
+}
+
+.closing__img {
+  margin-top: rem(27);
+  aspect-ratio: 365 / 285;
+  @include mq {
+    aspect-ratio: 640 / 500;
+    margin-top: rem(72);
+  }
+
+  picture,
+  img {
+    aspect-ratio: inherit;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: 50% 50%;
+  }
+}

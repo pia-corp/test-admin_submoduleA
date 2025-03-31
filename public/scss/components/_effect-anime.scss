@@ -1,0 +1,47 @@
+@use '../global' as *;
+
+// fade in opacity
+.effect-anime {
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity 0.3s ease-out,
+    transform 0.7s ease-out;
+}
+.effect-anime.effect-scroll {
+  visibility: visible;
+  opacity: 1;
+}
+
+// add fade in from Bottom
+.effect-anime--fadeBottom {
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(rem(40));
+  transition:
+    opacity 0.3s ease-out,
+    transform 0.7s ease-out;
+}
+.effect-anime--fadeBottom.effect-scroll {
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
+}
+
+// add blur
+.effect-anime--fadeBlur {
+  visibility: hidden;
+  opacity: 0;
+  transition:
+    opacity 0.3s ease-out,
+    filter 0.3s ease-in,
+    transform 0.7s ease-out;
+
+  filter: blur(rem(8));
+}
+.effect-anime--fadeBlur.effect-scroll {
+  visibility: visible;
+  opacity: 1;
+
+  filter: blur(0);
+}

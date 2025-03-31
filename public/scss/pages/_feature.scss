@@ -1,0 +1,76 @@
+@use '../global' as *;
+
+.feature {
+}
+
+.feature__inner.inner {
+}
+
+.feature__heading {
+}
+
+.feature__list {
+  display: grid;
+  grid-template-columns: repeat(1, 1fr);
+  gap: rem(24);
+  margin-top: rem(24);
+
+  @include mq {
+    grid-template-columns: repeat(2, 1fr);
+    gap: rem(16) rem(24);
+    margin-top: rem(40);
+    padding-inline: rem(30);
+  }
+}
+
+.feature__item {
+  display: flex;
+  align-items: flex-start;
+  gap: rem(4);
+
+  @include mq {
+    align-items: center;
+    gap: rem(16);
+  }
+}
+
+.feature__img {
+  flex-shrink: 0;
+  width: 30%;
+  aspect-ratio: 1;
+
+  @include mq {
+    width: 30%;
+  }
+
+  picture,
+  img {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: inherit;
+    object-fit: contain;
+    object-position: 50% 50%;
+  }
+}
+
+.feature__content {
+}
+
+.feature__title {
+  color: $pink;
+  font-family: $baseFontB;
+  font-weight: $bold;
+  font-size: rem(22);
+}
+
+.feature__description {
+  color: $brown2;
+  font-size: rem(14);
+  line-height: calc(22 / 14);
+  text-wrap: nowrap;
+}
+
+.feature__supplement {
+  color: $brown2;
+  font-size: rem(12);
+}

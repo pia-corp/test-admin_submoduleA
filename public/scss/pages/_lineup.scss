@@ -1,0 +1,39 @@
+@use '../global' as *;
+
+.lineup {
+}
+
+.lineup__inner {
+}
+
+.lineup__heading {
+}
+
+.lineup__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(rem(320), 1fr));
+  gap: rem(28) rem(32);
+  width: 100vw;
+  margin-inline: calc(50% - 50vw);
+  margin-top: rem(76);
+
+  @include mq {
+    grid-template-columns: repeat(2, 1fr);
+    gap: rem(90) rem(32);
+    width: 100%;
+    max-width: initial;
+    margin-inline: auto;
+  }
+}
+
+.lineup__item {
+}
+
+.lineup__button {
+  display: grid;
+  place-items: center;
+  margin-top: rem(12);
+  @include mq {
+    margin-top: rem(60);
+  }
+}

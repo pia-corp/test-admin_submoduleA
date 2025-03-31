@@ -1,0 +1,75 @@
+@use 'sass:math';
+
+// ! rem表記にすると表示エラー起こします。
+////////////////////
+// 基本設定
+////////////////////
+$innerWidth-sp: 375px; // SPのキャンパス幅
+$innerWidth-pc: 1180px; // PCのキャンパス幅
+$innerHeight-sp: 863px; // SPのキャンパス高さ
+$innerHeight-pc: 879px; // PCのキャンパス高さ
+$inner: 832px; // コンテンツのインナー幅（インナー幅＋パディング＝キャンパス幅）
+$maxWidth-tb: 560px; // タブレット時最大幅
+$padding-sp: 10px; // SPの余白
+$padding-pc: 25px; // PCの余白
+$headerHeight-sp: 50px; // SPのヘッダー高さ
+$headerHeight-pc: 110px; // PCのヘッダー高さ
+
+////////////////////
+// フォント設定
+////////////////////
+@font-face {
+  font-family: 'NeumaticGothicRound-Regular';
+  src:
+    url('../font/NeumaticGothicRnd-Regular.woff2') format('woff2'),
+    url('../font/NeumaticGothicRnd-Regular.woff') format('woff');
+  font-weight: normal;
+  font-style: normal;
+}
+
+$baseFont: 'A1ゴシック M', 'A1 Gothic M', sans-serif;
+$baseFontB: 'A1ゴシック B', 'A1 Gothic B', sans-serif;
+$secondFont: 'NeumaticGothicRound-Regular', sans-serif;
+$thirdFont: 'Noto Sans JP', sans-serif;
+
+$light: 300;
+$regular: 400;
+$medium: 500;
+$semiBold: 600;
+$bold: 700;
+$extraBold: 800;
+$blackBold: 900;
+
+////////////////////
+// 色の指定
+////////////////////
+
+$black: #333;
+$white: #fff;
+
+$gray: #666;
+$gray2: #bbb;
+$gray3: #707070;
+
+$beige: #dac8c8;
+$blue: #a8bed1;
+$purple: #cbc4d5;
+$orange: #ebe0ca;
+
+$brown: #5a4646;
+$brown2: #6f5a5a;
+$brown3: #7b4141;
+
+$pink: #e1a4cd;
+
+$grBeige1: #d9c7c7;
+$grBeige2: #e4d6d7;
+
+$grBlue1: #a7bdd0;
+$grBlue2: #c1d0de;
+
+$grPurple1: #cac3d5;
+$grPurple2: #dad4e1;
+
+$grYellow1: #ebe0c9;
+$grYellow2: #f1e8d9;

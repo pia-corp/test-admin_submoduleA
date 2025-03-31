@@ -1,0 +1,88 @@
+@use '../global' as *;
+
+.spec {
+  @include mq {
+    margin-top: rem(32);
+  }
+}
+
+.spec__inner {
+}
+
+.spec__heading {
+}
+
+.section-heading {
+}
+
+.spec__list {
+  max-width: rem(380);
+  margin-inline: auto;
+  margin-top: rem(28);
+
+  @include mq {
+    margin-top: rem(52);
+  }
+}
+
+.spec__item {
+  display: grid;
+  grid-template-columns: 1fr 3fr;
+  line-height: calc(22 / 14);
+}
+.spec__item + .spec__item {
+  margin-top: rem(5);
+}
+
+.spec__term,
+.spec__description {
+  display: grid;
+  place-items: center;
+  padding: rem(7);
+  text-align: center;
+}
+.spec__term h3,
+.spec__description {
+  font-weight: $medium;
+  font-size: rem(14);
+}
+.spec__term {
+  border-radius: rem(4) 0 0 rem(4);
+  background-color: $pink;
+  color: $white;
+}
+.spec__description {
+  border-radius: 0 rem(4) rem(4) 0;
+  background-color: $white;
+  color: $brown2;
+}
+
+.spec__button {
+  display: grid;
+  place-items: center;
+  margin-top: rem(32);
+}
+
+.spec__caution {
+  margin-top: rem(40);
+  color: $pink;
+  font-size: rem(12);
+  font-family: $thirdFont;
+  letter-spacing: 0.07em;
+
+  @include mq {
+    margin-top: rem(36);
+  }
+}
+
+.spec__notes {
+  margin-top: rem(20);
+  font-size: rem(12);
+  line-height: calc(17 / 12);
+  font-family: $thirdFont;
+  letter-spacing: 0.07em;
+
+  @include mq {
+    margin-top: rem(8);
+  }
+}

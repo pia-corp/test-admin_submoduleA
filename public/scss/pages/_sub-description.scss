@@ -1,0 +1,148 @@
+@use '../global' as *;
+
+.sub-description {
+  margin-top: rem(12);
+
+  @include mq {
+    margin-top: rem(24);
+  }
+}
+
+.sub-description__inner.inner {
+  @include mq {
+    max-width: calc(rem(723) + $padding-pc * 2);
+  }
+}
+
+.sub-description__heading {
+  height: rem(100);
+}
+
+.sub-description__lens-content {
+  margin-top: rem(10);
+  display: grid;
+  place-items: center;
+  grid-template-columns: 2fr 5fr;
+  gap: rem(30) rem(20);
+
+  @include mq {
+    margin-top: initial;
+    grid-template-columns: 2fr 10fr 5fr;
+  }
+}
+
+.sub-description__box-img {
+  justify-self: end;
+  width: rem(66);
+  aspect-ratio: 80 / 240;
+
+  @include mq {
+    width: rem(80);
+  }
+  picture,
+  img {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: inherit;
+    object-fit: cover;
+    object-position: 50% 50%;
+  }
+}
+
+.sub-description__lens-img {
+  grid-column: span 2;
+  order: 3;
+  width: 100%;
+  max-width: rem(392);
+  aspect-ratio: 392 / 246;
+
+  @include mq {
+    grid-column: span 1;
+    order: 2;
+  }
+
+  picture,
+  img {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: inherit;
+    object-fit: cover;
+    object-position: 50% 50%;
+  }
+}
+
+.sub-description__text-content {
+  justify-self: start;
+  order: 2;
+
+  @include mq {
+    order: 3;
+  }
+}
+
+.sub-description__circle-img {
+  width: rem(142);
+  aspect-ratio: 143 / 67;
+  picture,
+  img {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: inherit;
+    object-fit: contain;
+    object-position: 50% 50%;
+  }
+}
+
+.sub-description__text {
+  margin-top: rem(17);
+  color: $brown3;
+  font-size: rem(14);
+  line-height: calc(28 / 14);
+  text-wrap: nowrap;
+}
+
+.sub-description__eye-content {
+  max-width: rem(490);
+  margin-inline: auto;
+  margin-top: rem(32);
+  @include mq {
+    margin-top: rem(24);
+  }
+}
+
+.sub-description__eye-img {
+  width: 100%;
+  aspect-ratio: 490 / 153;
+
+  picture,
+  img {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: inherit;
+    object-fit: cover;
+    object-position: 50% 50%;
+  }
+}
+
+.sub-description__eye-text {
+  display: flex;
+  justify-content: space-around;
+  margin-top: rem(8);
+
+  @include mq {
+    margin-top: rem(20);
+  }
+}
+
+.sub-description__eye-text01 {
+  color: $brown3;
+}
+
+.sub-description__button {
+  display: grid;
+  place-items: center;
+  margin-top: rem(32);
+  @include mq {
+    margin-top: rem(19);
+  }
+}

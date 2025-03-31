@@ -1,0 +1,35 @@
+@use '../global' as *;
+
+.footer {
+  padding-bottom: rem(14);
+  text-align: center;
+  @include mq {
+    padding-bottom: rem(80);
+  }
+}
+
+.footer__inner {
+}
+
+.footer__list {
+  display: flex;
+  justify-content: center;
+  gap: rem(24);
+}
+
+.footer__item {
+  font-size: rem(14);
+  font-family: $thirdFont;
+  letter-spacing: 0.07em;
+}
+
+.footer__link {
+}
+
+.footer__copy {
+  display: block;
+  margin-top: rem(32);
+  font-size: rem(12);
+  font-family: $thirdFont;
+  letter-spacing: 0.07em;
+}

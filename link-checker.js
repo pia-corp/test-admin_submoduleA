@@ -24,7 +24,7 @@ const publicDir = path.join(__dirname, 'public/');
 
 // リンク制限カウンター
 let totalBrokenLinksCount = 0;
-const BROKEN_LINKS_LIMIT = 11;
+const BROKEN_LINKS_LIMIT = 101;
 
 // ファイル探索を非同期に変更
 async function getHtmlFiles(dir) {

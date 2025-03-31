@@ -1,0 +1,56 @@
+@use '../global' as *;
+
+.card-lineup {
+  width: 100%;
+}
+
+.card-lineup__title {
+  height: rem(100);
+
+  @include mq {
+    height: rem(140);
+  }
+}
+
+.card-lineup__content {
+  position: relative;
+
+  @include mq {
+    margin-top: rem(12);
+  }
+}
+
+.card-lineup__img {
+  width: 100%;
+  aspect-ratio: 375 / 480;
+  border-radius: rem(20);
+  transition: transform 0.3s;
+
+  @include mq {
+    aspect-ratio: 400 / 480;
+  }
+  img {
+    width: 100%;
+    height: 100%;
+    aspect-ratio: inherit;
+    object-fit: contain;
+    object-position: 50% 50%;
+    border-radius: inherit;
+  }
+}
+
+.card-lineup__button {
+  position: absolute;
+  right: 2.5%;
+  bottom: 4%;
+
+  @include mq {
+    display: grid;
+    place-items: center;
+    position: initial;
+  }
+}
+
+.card-lineup__img:hover {
+  transform: scale(1.01);
+}
