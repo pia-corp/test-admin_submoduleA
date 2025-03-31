@@ -30,15 +30,23 @@ on:
       - 'main'
     types: [opened, reopened, synchronize]
 
+# プルリクエストで起動するワークフローは、最新コード以外での実行がたいてい不要です。
+# 自動テストや静的解析はその典型で、古いコードで実行されるワークフローはムダです。
+# そこで次のように実装し、古いワークフローは自動キャンセルしましょう。
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
+
+permissions: {}
 
 jobs:
   page_speed_analysis:
     name: デプロイとパフォーマンス分析
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: read # コードの読み込みを許可
+
     if: startsWith(github.head_ref, 'develop')
 
     # =============================
@@ -71,15 +79,15 @@ jobs:
       # 基本設定
       # =============================
       - name: リポジトリをチェックアウト
-        uses: actions/checkout@v4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
       - name: Node.js環境をセットアップ
-        uses: actions/setup-node@v4.3.0
+        uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e
         with:
           node-version: 'latest'
 
       - name: npm依存関係をキャッシュ
-        uses: actions/cache@v4.2.3
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684
         with:
           path: ~/.npm
           key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
@@ -192,7 +200,7 @@ jobs:
           # 結果の処理
           if [ -n "$HTML_FILES" ]; then
             HTML_COUNT=$(echo "$HTML_FILES" | awk -F',' '{print NF}')
-            echo "変更されたHTMLファイル: $HTML_FILES"
+            echo `変更されたHTMLファイル: $HTML_FILES`
           else
             echo "変更されたHTMLファイルはありません"
             HTML_FILES=""
