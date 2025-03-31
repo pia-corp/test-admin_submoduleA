@@ -17,23 +17,11 @@ function getHtmlFiles(dir) {
       htmlFiles.push(filePath);
     }
   });
-  console.log(htmlFiles);
-
   return htmlFiles;
 }
 
 const htmlFiles = getHtmlFiles(publicDir);
-
 const brokenLinks = {};
-const checkedFiles = [];
-
-function removeDuplicateLinks(brokenLinks) {
-  for (const file in brokenLinks) {
-    if (brokenLinks.hasOwnProperty(file)) {
-      brokenLinks[file] = [...new Set(brokenLinks[file])];
-    }
-  }
-}
 
 const siteChecker = new SiteChecker({
   excludedKeywords: ['https://fonts.googleapis.com', 'https://fonts.gstatic.com'],
@@ -46,28 +34,35 @@ const siteChecker = new SiteChecker({
 }, {
   link: (result) => {
     if (result.broken) {
-      // 正規表現を使用してプロトコル + ドメイン部分を削除
       const file = result.base.original.replace(/^https?:\/\/[^/]+/, '');
-
-      if (file != "/") {
+      if (file !== "/") {
         if (!brokenLinks[file]) {
-          brokenLinks[file] = [];
+          brokenLinks[file] = new Set(); // Setを使用して重複を防ぐ
         }
-        brokenLinks[file].push(result.url.original);
+        brokenLinks[file].add(result.url.original);
       }
-
-    } else {
-      // console.log(`${result.url.original}: Valid`);
     }
   },
   end: async () => {
     console.log("Link checking completed.");
-    removeDuplicateLinks(brokenLinks); // 重複を削除
     await notifyGitHub(brokenLinks);
-    console.log("Checked files:");
-    checkedFiles.forEach(file => console.log(file));
   }
 });
+
+async function processHtmlFiles() {
+  for (const filePath of htmlFiles) {
+    const content = fs.readFileSync(filePath, 'utf8');
+    const $ = cheerio.load(content);
+    $('a[target="_blank"]').attr('href', '#');
+    fs.writeFileSync(filePath, $.html());
+    siteChecker.enqueue(`http://localhost:8081/${path.relative(publicDir, filePath)}`);
+  }
+}
+
+processHtmlFiles().then(() => {
+  console.log("All files processed.");
+});
+
 
 htmlFiles.forEach(filePath => {
   const content = fs.readFileSync(filePath, 'utf8');
