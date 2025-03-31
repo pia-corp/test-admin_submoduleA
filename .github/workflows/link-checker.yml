@@ -26,6 +26,6 @@ jobs:
 
       - name: リンクチェック実行
         id: link-check
-        run: node ./.github/scripts/check-links.js
+        run: node ./.github/actions/check-links.js
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
