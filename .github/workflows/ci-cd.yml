@@ -266,55 +266,25 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       # 結果の報告
-      - name: 分析結果をPRコメントとして投稿
+      - name: PSI分析結果をPRにコメント
         if: ${{ steps.extract_html_diff.outputs.html_count != '0' && steps.psi_analysis.outcome == 'success' }}
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        if: ${{ steps.psi_check.outcome == 'success' }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            try {
-              // 安全な方法で分析結果を処理 - コンテンツを直接展開せず関数で処理
-              // ステップ1: 結果文字列を取得
-              const resultString = `${{ steps.psi_analysis.outputs.result }}`;
+            const result = `${{ steps.psi_check.outputs.result }}`;
 
-              // ステップ2: 結果をサニタイズして安全な構造に変換
-              // 生の文字列をそのまま使うのではなく、JSON処理関数を使用
-              let analysisResult;
-              try {
-                // JSON文字列をパースして安全なオブジェクトに変換
-                const parsedData = JSON.parse(resultString);
-                // 再度文字列化して安全なJSONにする
-                analysisResult = JSON.stringify(parsedData);
-              } catch (e) {
-                // JSON解析に失敗した場合はエスケープ処理
-                console.error('結果のパースに失敗しました:', e);
-                // 基本的なHTMLエスケープを適用
-                analysisResult = resultString
-                  .replace(/&/g, '&amp;')
-                  .replace(/</g, '&lt;')
-                  .replace(/>/g, '&gt;')
-                  .replace(/"/g, '&quot;')
-                  .replace(/'/g, '&#039;');
-                analysisResult = `\`\`\`\n${analysisResult}\n\`\`\``;
-              }
+            // セキュリティレポートの添付
+            const securityNote = `
+              ## セキュリティノート
+              このレポートは自動生成されたものです。内容は検証済みですが、不明な点がある場合はお問い合わせください。
+            `;
+            result += securityNote;
 
-              // セキュリティレポートの添付
-              const securityNote = `
-                ## セキュリティノート
-                このレポートは自動生成されたものです。内容は検証済みですが、不明な点がある場合はお問い合わせください。
-              `;
-
-              // 安全に整形されたコンテンツをコメントとして投稿
-              await github.rest.issues.createComment({
-                issue_number: context.issue.number,
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                body: `## PageSpeed分析結果\n\n${analysisResult}\n\n${securityNote}`
-              });
-
-              console.log('PageSpeed分析結果をPRコメントとして安全に投稿しました');
-            } catch (error) {
-              console.error('PRコメント投稿中にエラーが発生しました:', error);
-              // エラーが発生しても後続のステップに影響しないよう0で終了
-              return;
-            }
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: result
+            });
