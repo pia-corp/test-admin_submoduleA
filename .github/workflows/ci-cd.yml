@@ -172,7 +172,9 @@ jobs:
       # リンクチェッカースクリプトを実行
       - name: Run link checker
         id: link-checker
-        run: node link-checker.js
+        run: |
+          cp .github/actions/link-checker.js .
+          node link-checker.js
 
       # 見つかったリンク切れをPRにコメント
       - name: Post broken links to PR
