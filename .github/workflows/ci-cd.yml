@@ -285,26 +285,26 @@ jobs:
               // ステップ1: 結果文字列を取得
               const resultString = `${{ steps.psi_analysis.outputs.result }}`;
 
-              // ステップ2: 結果をサニタイズして安全な構造に変換
-              // 生の文字列をそのまま使うのではなく、JSON処理関数を使用
-              let analysisResult;
-              try {
-                // JSON文字列をパースして安全なオブジェクトに変換
-                const parsedData = JSON.parse(resultString);
-                // 再度文字列化して安全なJSONにする
-                analysisResult = JSON.stringify(parsedData);
-              } catch (e) {
-                // JSON解析に失敗した場合はエスケープ処理
-                console.error('結果のパースに失敗しました:', e);
-                // 基本的なHTMLエスケープを適用
-                analysisResult = resultString
-                  .replace(/&/g, '&amp;')
-                  .replace(/</g, '&lt;')
-                  .replace(/>/g, '&gt;')
-                  .replace(/"/g, '&quot;')
-                  .replace(/'/g, '&#039;');
-                analysisResult = `\`\`\`\n${analysisResult}\n\`\`\``;
-              }
+              # // ステップ2: 結果をサニタイズして安全な構造に変換
+              # // 生の文字列をそのまま使うのではなく、JSON処理関数を使用
+              # let analysisResult;
+              # try {
+              #   // JSON文字列をパースして安全なオブジェクトに変換
+              #   const parsedData = JSON.parse(resultString);
+              #   // 再度文字列化して安全なJSONにする
+              #   analysisResult = JSON.stringify(parsedData);
+              # } catch (e) {
+              #   // JSON解析に失敗した場合はエスケープ処理
+              #   console.error('結果のパースに失敗しました:', e);
+              #   // 基本的なHTMLエスケープを適用
+              #   analysisResult = resultString
+              #     .replace(/&/g, '&amp;')
+              #     .replace(/</g, '&lt;')
+              #     .replace(/>/g, '&gt;')
+              #     .replace(/"/g, '&quot;')
+              #     .replace(/'/g, '&#039;');
+              #   analysisResult = `\`\`\`\n${analysisResult}\n\`\`\``;
+              # }
 
               // セキュリティレポートの添付
               const securityNote = `
@@ -317,7 +317,7 @@ jobs:
                 issue_number: context.issue.number,
                 owner: context.repo.owner,
                 repo: context.repo.repo,
-                body: `## PageSpeed分析結果\n\n${analysisResult}\n\n${securityNote}`
+                body: `## PageSpeed分析結果\n\n${resultString}\n\n${securityNote}`
               });
 
               console.log('PageSpeed分析結果をPRコメントとして安全に投稿しました');
