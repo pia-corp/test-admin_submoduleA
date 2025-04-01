@@ -63,6 +63,7 @@ jobs:
             # markuplintを実行し、結果をJSONで出力
             RESULT=$(npx markuplint "$file" --format JSON)
 
+
             # エラーがある場合のみ処理
             if [ "$(echo "$RESULT" | jq 'length')" -gt 0 ]; then
               ERROR_COUNT=$((ERROR_COUNT + 1))
