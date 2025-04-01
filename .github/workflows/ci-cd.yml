@@ -32,6 +32,7 @@ jobs:
     # 必要な権限のみを付与
     permissions:
       contents: read         # リポジトリコンテンツの読み取り権限
+      pull-requests: write   # PRへのコメント投稿権限
 
     steps:
       # リポジトリのコードをチェックアウト
