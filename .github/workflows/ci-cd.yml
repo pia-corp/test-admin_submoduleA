@@ -45,7 +45,7 @@ jobs:
   # HTMLファイルに対してmarkuplintによる静的解析を実行し、コードの品質を検証します。
   # =============================
   html-linter:
-    name: HTML静的解析ワークフロー
+    name: HTMLマークアップリンター
     # 実行条件：
     # - ベースブランチがmain
     # - 実行者がdependabotではない
@@ -85,6 +85,7 @@ jobs:
   # =============================
   check-links:
     needs: html-linter
+    name: リンク切れチェック
     runs-on: ubuntu-latest
     # 実行時間が5分を超えた場合、ワークフローを強制終了
     timeout-minutes: 5
