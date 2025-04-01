@@ -1,29 +1,3 @@
-# =====================================================================
-# PageSpeed Insights 自動チェックワークフロー
-# =====================================================================
-# 概要:
-# このワークフローは、プルリクエスト時に以下の処理を自動的に実行します:
-# 1. コードのチェックアウトと環境設定
-# 2. HTMLファイルの整形（lint）
-# 3. 開発サーバーへのファイルデプロイ
-# 4. リンク切れのチェック
-# 5. 変更されたHTMLファイルに対するPageSpeed Insightsによるパフォーマンス分析
-# 6. 結果のPRへのコメント投稿
-#
-# フロー:
-# プルリクエスト作成/更新 → コードチェックアウト → 依存関係インストール →
-# lint実行 → SSHキー設定 → ファイルデプロイ → リンクチェック →
-# HTML差分抽出 → PSIチェック → 結果投稿
-#
-# 注意事項:
-# - このワークフローは`develop/`ブランチへのPRに対してのみ実行されます
-# - SSH接続のための秘密鍵はGitHubシークレットから取得します
-# - PSI APIキーはGitHubシークレットに設定する必要があります
-# - 同じブランチに対する古いワークフローは自動的にキャンセルされます
-# - timeout-minutesは30分に設定されています
-#
-# =====================================================================
-
 name: CI
 
 on:
@@ -76,9 +50,77 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # markuplintを実行
-      - name: Run linter
-        run: npm run linter
+      - name: Run markuplint
+        id: markuplint
+        run: |
+          # HTMLファイルを探して結果をJSONで出力
+          FILES=$(find . -type f -name "*.html" -o -name "*.htm")
+          ERROR_COUNT=0
+          COMMENT=""
+
+          for file in $FILES; do
+            # markuplintを実行し、結果をJSONで出力
+            RESULT=$(markuplint "$file" --format JSON)
+
+            # エラーがある場合のみ処理
+            if [ "$(echo "$RESULT" | jq 'length')" -gt 0 ]; then
+              ERROR_COUNT=$((ERROR_COUNT + 1))
+
+              # 相対パスに変換
+              RELATIVE_FILE=$(echo "$file" | sed 's|^\./||')
+
+              # マークダウン形式のコメントを作成
+              COMMENT="${COMMENT}### ファイル: \`${RELATIVE_FILE}\`\n\n"
+              COMMENT="${COMMENT}| 行 | 列 | メッセージ | ルール |\n"
+              COMMENT="${COMMENT}|---|---|---|---|\n"
+
+              # 各エラーをテーブル行として追加
+              echo "$RESULT" | jq -c '.[]' | while read -r error; do
+                LINE=$(echo "$error" | jq -r '.location.line')
+                COL=$(echo "$error" | jq -r '.location.col')
+                MESSAGE=$(echo "$error" | jq -r '.message')
+                RULE=$(echo "$error" | jq -r '.ruleId')
+
+                COMMENT="${COMMENT}| ${LINE} | ${COL} | ${MESSAGE} | ${RULE} |\n"
+              done
+
+              COMMENT="${COMMENT}\n"
+            fi
+          done
+
+          # 結果をファイルに出力
+          echo "$COMMENT" > markuplint-results.md
+
+          # 環境変数に保存（後でコメントに使用）
+          echo "ERROR_COUNT=$ERROR_COUNT" >> $GITHUB_ENV
+          echo "COMMENT<<EOF" >> $GITHUB_ENV
+          echo "$COMMENT" >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Comment on PR
+        if: env.ERROR_COUNT != '0'
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const fs = require('fs');
+
+            const comment = `# Markuplint 検査結果 🔍
+
+            ${process.env.COMMENT}
+
+            詳細は [markuplint のドキュメント](https://markuplint.dev/) を参照してください。`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+
+      # # markuplintを実行
+      # - name: Run linter
+      #   run: npm run linter
 
   # =============================
   # リポジトリ内のHTMLファイルのリンク切れをチェックします。見つかったリンク切れはプルリクエストのコメントとして報告されます。
