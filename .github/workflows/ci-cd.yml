@@ -228,41 +228,10 @@ jobs:
           HTML_FILES: ${{ steps.extract_html_diff.outputs.html_files }}
         id: psi_analysis
         run: |
-          # セキュリティ強化: HTMLファイルリストのバリデーション
-          # HTMLファイルパスとして有効な文字のみを許可
-          if [[ ! -z "${{ env.HTML_FILES }}" ]]; then
-            IFS=',' read -ra HTML_FILES_ARRAY <<< "${{ env.HTML_FILES }}"
-            VALIDATED_FILES=""
-
-            for file in "${HTML_FILES_ARRAY[@]}"; do
-              # 安全なパスのみを許可（英数字、アンダースコア、ハイフン、スラッシュ、ドット、拡張子が.htmlのもの）
-              if [[ "$file" =~ ^[a-zA-Z0-9_/-]+\.html$ ]]; then
-                if [[ -z "$VALIDATED_FILES" ]]; then
-                  VALIDATED_FILES="$file"
-                else
-                  VALIDATED_FILES="$VALIDATED_FILES,$file"
-                fi
-              else
-                echo "警告: 無効なファイルパスをスキップします: $file"
-              fi
-            done
-
-            # 検証済みファイルリストを環境変数に設定
-            echo "VALIDATED_HTML_FILES=$VALIDATED_FILES" >> $GITHUB_ENV
-            echo "分析対象ファイル: $VALIDATED_FILES"
-          else
-            echo "分析対象ファイルはありません"
-            echo "VALIDATED_HTML_FILES=" >> $GITHUB_ENV
-            exit 0
-          fi
-
-          # Node.jsスクリプトでPageSpeed Insights分析を実行
-          # 検証済みの値を使用
-          ANALYSIS_RESULT=$(VALIDATED_HTML_FILES="$VALIDATED_FILES" node .github/actions/psi)
-
-          # 複数行の結果をGitHub Actions出力として設定
+          echo "分析対象ファイル: ${{ steps.extract_html_diff.outputs.html_files }}"
+          RESULT=$(node .github/actions/psi)
           echo "result<<EOF" >> $GITHUB_OUTPUT
-          echo "$ANALYSIS_RESULT" >> $GITHUB_OUTPUT
+          echo "$RESULT" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
       # 結果の報告
@@ -273,14 +242,6 @@ jobs:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
             const result = `${{ steps.psi_analysis.outputs.result }}`;
-
-            // セキュリティレポートの添付
-            const securityNote = `
-              ## セキュリティノート
-              このレポートは自動生成されたものです。内容は検証済みですが、不明な点がある場合はお問い合わせください。
-            `;
-            result += securityNote;
-
             github.rest.issues.createComment({
               issue_number: context.issue.number,
               owner: context.repo.owner,
