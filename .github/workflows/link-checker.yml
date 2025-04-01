@@ -96,7 +96,8 @@ jobs:
         with:
           script: |
             // リンクチェッカーからのエラー出力を取得
-            const errorsArray = process.env.LINK_CHECK_ERRORS;
+            # const errorsArray = process.env.LINK_CHECK_ERRORS;
+            const errorsArray = `${{ steps.link-checker.outputs.errors }}`;
 
             // エラーメッセージを整形
             let message = "";
