@@ -1,12 +1,7 @@
 {
-  {
-  "extends": ["markuplint:recommended"]
-  },
+  "extends": ["markuplint:recommended"],
   "parser": {
     ".html$": "@markuplint/html-parser"
-  },
-  "specs": {
-    ".html$": "html5"
   },
   "excludeFiles": [
     "node_modules/**/*"
@@ -51,6 +46,5 @@
     "required-h1": false,
     "use-list": false,
     "wai-aria": false
-  },
-  "excludeFiles": ["./public/contact/index.html"]
+  }
 }
