@@ -230,7 +230,7 @@ async function checkSingleLink(url, filePath, brokenLinks, callback) {
       if (typeof callback === 'function') {
         callback({
           broken: true,
-          url: { original: url },
+          url: { original: before_url },
           base: { original: filePath }
         });
       }
