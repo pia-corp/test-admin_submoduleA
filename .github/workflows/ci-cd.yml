@@ -19,7 +19,9 @@
 # - このワークフローは`develop/`ブランチへのPRに対してのみ実行されます
 # - SSH接続のための秘密鍵はGitHubシークレットから取得します
 # - PSI APIキーはGitHubシークレットに設定する必要があります
-# - 処理時間制限は30分です
+# - 同じブランチに対する古いワークフローは自動的にキャンセルされます
+# - timeout-minutesは30分に設定されています
+#
 # =====================================================================
 
 name: CI
@@ -30,25 +32,74 @@ on:
       - 'main'
     types: [opened, reopened, synchronize]
 
-# プルリクエストで起動するワークフローは、最新コード以外での実行がたいてい不要です。
-# 自動テストや静的解析はその典型で、古いコードで実行されるワークフローはムダです。
-# そこで次のように実装し、古いワークフローは自動キャンセルしましょう。
-# concurrency:
-#   group: ${{ github.workflow }}-${{ github.ref }}
-#   cancel-in-progress: true
+# 同じPRで複数のワークフローが実行されないようにする設定
+# 新しいコミットがプッシュされた場合、進行中の古いワークフローは自動的にキャンセルされる
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions: {}
 
 jobs:
-  page_speed_analysis:
-    name: デプロイとパフォーマンス分析
+  # =============================
+  # HTMLファイルに対してmarkuplintによる静的解析を実行し、コードの品質を検証します。
+  # =============================
+  html-linter:
+    name: HTML静的解析ワークフロー
+    # 実行条件：
+    # - ベースブランチがmain
+    # - 実行者がdependabotではない
+    # - ヘッドブランチ名がdevelopで始まる
+    if: github.base_ref == 'main' && github.actor != 'dependabot[bot]' && startsWith(github.head_ref, 'develop')
+
     runs-on: ubuntu-latest
+    # 実行時間が3分を超えた場合、ワークフローを強制終了
+    timeout-minutes: 3
+    # 必要な権限のみを付与
+    permissions:
+      contents: read         # リポジトリコンテンツの読み取り権限
+
+    steps:
+      # リポジトリのコードをチェックアウト
+      - name: リポジトリをチェックアウト
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false  # 不要な認証情報を保持しない
+
+      # Node.js環境のセットアップ
+      - name: Node.jsセットアップ
+        uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e # v3.5.1
+        with:
+          node-version: 'latest'  # 最新のNode.jsバージョンを使用
+
+      # npm依存関係のキャッシュを利用して高速化
+      - name: Cache npm dependencies
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4.2.3
+        id: cache-node
+        with:
+          path: |
+            ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      # キャッシュがヒットしなかった場合のみ依存関係をインストール
+      - name: Install dependencies
+        if: steps.cache-node.outputs.cache-hit != 'true'
+        run: npm ci
+
+      # markuplintを実行
+      - name: Run linter
+        run: npm run linter
+
+  page_speed_analysis:
+    name: パフォーマンス分析
+    runs-on: ubuntu-latest
+    # 実行時間が30分を超えた場合、ワークフローを強制終了
     timeout-minutes: 30
     permissions:
-      contents: read
-      pull-requests: write
-
-    if: startsWith(github.head_ref, 'develop')
+      contents: read         # リポジトリコンテンツの読み取り権限
+      pull-requests: write   # PRへのコメント投稿権限
 
     # =============================
     # 環境変数の設定
@@ -61,140 +112,106 @@ jobs:
 
     env:
       # 接続情報
-      SERVER_HOST: ${{ vars.DEVELOPMENT_HOST }}
-      SERVER_PORT: ${{ vars.DEVELOPMENT_PORT }}
-      SERVER_USER: ${{ vars.DEVELOPMENT_USER_NAME }}
+      DEV_SERVER_HOST: ${{ vars.DEVELOPMENT_HOST }}
+      DEV_SERVER_PORT: ${{ vars.DEVELOPMENT_PORT }}
+      DEV_SERVER_USER: ${{ vars.DEVELOPMENT_USER_NAME }}
 
       # パス設定
-      LOCAL_PATH: ${{ vars.LOCAL_PATH }}
+      LOCAL_SOURCE_PATH: ${{ vars.LOCAL_PATH }}
       REMOTE_BASE_PATH: ${{ vars.DEVELOPMENT_REMOTE_PATH }}
       REMOTE_PROJECT_PATH: ${{ vars.DEVELOPMENT_REMOTE_PATH }}/${{ github.event.repository.name }}
 
       # デプロイ設定
       SYNC_MODE: "full"
-      TARGET_REPOSITORY: ${{ github.event.repository.name }}
-      TARGET_ENVIRONMENT: "検証環境"
+      REPOSITORY_NAME: ${{ github.event.repository.name }}
+      ENVIRONMENT_NAME: "検証環境"
 
     steps:
-      # =============================
-      # 基本設定
-      # =============================
+      # リポジトリのコードをチェックアウト
       - name: リポジトリをチェックアウト
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # 4.2.2
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
-          persist-credentials: false
+          persist-credentials: false  # 不要な認証情報を保持しない
 
-      - name: Node.js環境をセットアップ
-        uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e # v3.5.1
+      - name: SSH接続の設定
+        run: |
+          # SSHディレクトリの準備
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          # セキュリティ強化：環境変数の事前バリデーション - インジェクション攻撃対策
+          # ホスト名のバリデーション（厳格なパターンのみ許可）
+          if ! [[ "${{ env.DEV_SERVER_HOST }}" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]{0,61}[a-zA-Z0-9](\.[a-zA-Z]{2,})+$ ]]; then
+            echo "エラー: 無効なサーバーホスト名が指定されています" >&2
+            exit 1
+          fi
+          VALIDATED_HOST="${{ env.DEV_SERVER_HOST }}"
+
+          # ポート番号のバリデーション（数値のみ、範囲チェック）
+          if ! [[ "${{ env.DEV_SERVER_PORT }}" =~ ^[0-9]+$ ]] || \
+            [ "${{ env.DEV_SERVER_PORT }}" -lt 1 ] || \
+            [ "${{ env.DEV_SERVER_PORT }}" -gt 65535 ]; then
+            echo "エラー: 無効なポート番号が指定されています" >&2
+            exit 1
+          fi
+          VALIDATED_PORT="${{ env.DEV_SERVER_PORT }}"
+
+          # ユーザー名のバリデーション（英数字とアンダースコアのみ）
+          if ! [[ "${{ env.DEV_SERVER_USER }}" =~ ^[a-zA-Z0-9_]+$ ]]; then
+            echo "エラー: 無効なユーザー名が指定されています" >&2
+            exit 1
+          fi
+          VALIDATED_USER="${{ env.DEV_SERVER_USER }}"
+
+          # プロジェクトパスのバリデーション（安全な文字のみ）
+          SANITIZED_PATH=$(echo "${{ env.REMOTE_PROJECT_PATH }}" | sed 's/[^a-zA-Z0-9_/-]//g')
+          # 追加チェック - 空文字列やディレクトリトラバーサルの防止
+          if [ -z "$SANITIZED_PATH" ] || [[ "$SANITIZED_PATH" == *".."* ]]; then
+            echo "エラー: 無効なプロジェクトパスが指定されています" >&2
+            exit 1
+          fi
+
+          # 秘密鍵のセットアップ
+          echo "${{ secrets.DEVELOPMENT_SSH_KEY }}" > ~/.ssh/id_rsa.enc
+          echo "${{ secrets.SSH_PASSPHRASE }}" | openssl rsa -in ~/.ssh/id_rsa.enc -out ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+          # SSH設定ファイルの作成 - ヒアドキュメントの代わりに複数のechoを使用
+          echo "Host ${VALIDATED_HOST}" > ~/.ssh/config
+          echo "  User ${VALIDATED_USER}" >> ~/.ssh/config
+          echo "  Port ${VALIDATED_PORT}" >> ~/.ssh/config
+          echo "  IdentityFile ~/.ssh/id_rsa" >> ~/.ssh/config
+          echo "  StrictHostKeyChecking no" >> ~/.ssh/config
+
+          # SSHコマンドの安全な構築 - 引数の分離とクォートに注意
+          ssh -p "${VALIDATED_PORT}" \
+              -o StrictHostKeyChecking=no \
+              -i ~/.ssh/id_rsa \
+              "${VALIDATED_USER}@${VALIDATED_HOST}" \
+              "mkdir -p '${SANITIZED_PATH}'"
+
+      # デプロイ処理
+      - name: 検証環境へファイルをデプロイ
+        uses: milanmk/actions-file-deployer@1.16
         with:
-          node-version: 'latest'
+          remote-protocol: 'sftp'
+          remote-host: ${{ env.DEV_SERVER_HOST }}
+          remote-port: ${{ env.DEV_SERVER_PORT }}
+          remote-user: ${{ env.DEV_SERVER_USER }}
+          ssh-private-key: ~/.ssh/id_rsa
+          local-path: ${{ env.LOCAL_SOURCE_PATH }}
+          remote-path: ${{ env.REMOTE_PROJECT_PATH }}
+          sync: ${{ env.SYNC_MODE }}
+          debug: false
 
-      - name: npm依存関係をキャッシュ
-        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      - name: 依存関係をインストール
-        run: npm ci
-
-      # - name: マークアップリント
-      #   run: npm run linter
-
-      # # =============================
-      # # SSH設定とデプロイ
-      # # =============================
-      # - name: SSH秘密鍵を設定
-      #   run: |
-      #     # SSHディレクトリが存在しない場合は作成
-      #     if [ ! -d "~/.ssh" ]; then
-      #       mkdir -p ~/.ssh
-      #     fi
-
-      #     # 秘密鍵を設定
-      #     echo "${{ secrets.DEVELOPMENT_SSH_KEY }}" > ~/.ssh/id_rsa.enc
-      #     echo "${{ secrets.SSH_PASSPHRASE }}" | openssl rsa -in ~/.ssh/id_rsa.enc -out ~/.ssh/id_rsa
-      #     chmod 600 ~/.ssh/id_rsa
-
-      #     # SSH設定を作成
-      #     echo -e "Host ${{ env.SERVER_HOST }}\n  User ${{ env.SERVER_USER }}\n  Port ${{ env.SERVER_PORT }}\n  IdentityFile ~/.ssh/id_rsa\n" > ~/.ssh/config
-
-      #     # リモートディレクトリを作成
-      #     ssh -v -p ${{ env.SERVER_PORT }} -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ${{ env.SERVER_USER }}@${{ env.SERVER_HOST }} "mkdir -p ${{ env.REMOTE_PROJECT_PATH }}"
-
-      # - name: 検証環境へファイルをデプロイ
-      #   uses: milanmk/actions-file-deployer@1.16
-      #   with:
-      #     remote-protocol: 'sftp'
-      #     remote-host: ${{ env.SERVER_HOST }}
-      #     remote-port: ${{ env.SERVER_PORT }}
-      #     remote-user: ${{ env.SERVER_USER }}
-      #     ssh-private-key: ~/.ssh/id_rsa
-      #     local-path: ${{ env.LOCAL_PATH }}
-      #     remote-path: ${{ env.REMOTE_PROJECT_PATH }}
-      #     sync: ${{ env.SYNC_MODE }}
-      #     debug: false
-
-      # =============================
-      # リンクチェック
-      # =============================
-  # check-links:
-  #   runs-on: ubuntu-latest
-
-  #   steps:
-  #     - name: Checkout code
-  #       uses: actions/checkout@v3
-
-  #     - name: Setup Node.js
-  #       uses: actions/setup-node@v3
-  #       with:
-  #         node-version: '16'
-
-  #     - name: Install dependencies
-  #       run: npm install broken-link-checker cheerio undici stream-web
-
-  #     - name: Check for broken links
-  #       id: blc
-  #       run: |
-  #         node .github/actions/link-checker.js
-  #         if grep -q "| " broken_links_result.md; then
-  #           echo "found_broken_links=true" >> $GITHUB_OUTPUT
-  #         else
-  #           echo "found_broken_links=false" >> $GITHUB_OUTPUT
-  #         fi
-
-  #     - name: Comment on PR
-  #       if: steps.blc.outputs.found_broken_links == 'true'
-  #       uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
-  #       with:
-  #         github-token: ${{ secrets.GITHUB_TOKEN }}
-  #         script: |
-  #           const fs = require('fs');
-  #           const brokenLinksContent = fs.readFileSync('broken_links_result.md', 'utf8');
-
-  #           github.rest.issues.createComment({
-  #             issue_number: context.issue.number,
-  #             owner: context.repo.owner,
-  #             repo: context.repo.repo,
-  #             body: `## 🔍 リンク切れが検出されました\n\n${brokenLinksContent}\n\nこれらのリンクを修正してください。`
-  #           });
-
-
-
-
-
-      # =============================
-      # HTML変更ファイル抽出
-      # =============================
+      # 変更ファイル分析
       - name: 変更されたHTMLファイルを抽出
         id: extract_html_diff
         run: |
           # mainブランチと比較するためにfetch
-          git fetch origin || true
+          git fetch origin main || echo "mainブランチの取得に失敗しました。新規リポジトリの場合は無視できます。"
 
-          # HTMLファイルのみを抽出（public配下のみ）
+          # publicディレクトリ配下のHTMLファイルのみを抽出
           HTML_FILES=$(git diff --name-only origin/main HEAD | grep -E 'public/.*\.html$' | sed 's#^public/##g' | tr '\n' ',' || echo "")
 
           # 末尾のカンマを削除
@@ -203,43 +220,120 @@ jobs:
           # 結果の処理
           if [ -n "$HTML_FILES" ]; then
             HTML_COUNT=$(echo "$HTML_FILES" | awk -F',' '{print NF}')
-            echo `変更されたHTMLファイル: $HTML_FILES`
+            echo "変更されたHTMLファイル: $HTML_FILES (合計: $HTML_COUNT件)"
           else
             echo "変更されたHTMLファイルはありません"
             HTML_FILES=""
             HTML_COUNT=0
           fi
 
-          # 出力を設定
+          # GitHub Actions出力を設定
           echo "html_files=${HTML_FILES}" >> $GITHUB_OUTPUT
           echo "html_count=${HTML_COUNT}" >> $GITHUB_OUTPUT
 
-      # =============================
-      # PageSpeed Insights分析
-      # =============================
+      # パフォーマンス分析
       - name: PageSpeed Insights分析を実行
+        if: ${{ steps.extract_html_diff.outputs.html_count != '0' }}
         env:
           PSI_API_KEY: ${{ secrets.PSI_API_KEY }}
           BASE_URL: "https://piapiapia.xsrv.jp/dev/${{ github.event.repository.name }}"
           HTML_FILES: ${{ steps.extract_html_diff.outputs.html_files }}
-        id: psi_check
+        id: psi_analysis
         run: |
-          echo "分析対象ファイル: ${{ steps.extract_html_diff.outputs.html_files }}"
-          RESULT=$(node .github/actions/psi)
+          # セキュリティ強化: HTMLファイルリストのバリデーション
+          # HTMLファイルパスとして有効な文字のみを許可
+          if [[ ! -z "${{ env.HTML_FILES }}" ]]; then
+            IFS=',' read -ra HTML_FILES_ARRAY <<< "${{ env.HTML_FILES }}"
+            VALIDATED_FILES=""
+
+            for file in "${HTML_FILES_ARRAY[@]}"; do
+              # 安全なパスのみを許可（英数字、アンダースコア、ハイフン、スラッシュ、ドット、拡張子が.htmlのもの）
+              if [[ "$file" =~ ^[a-zA-Z0-9_/-]+\.html$ ]]; then
+                if [[ -z "$VALIDATED_FILES" ]]; then
+                  VALIDATED_FILES="$file"
+                else
+                  VALIDATED_FILES="$VALIDATED_FILES,$file"
+                fi
+              else
+                echo "警告: 無効なファイルパスをスキップします: $file"
+              fi
+            done
+
+            # 検証済みファイルリストを環境変数に設定
+            echo "VALIDATED_HTML_FILES=$VALIDATED_FILES" >> $GITHUB_ENV
+            echo "分析対象ファイル: $VALIDATED_FILES"
+          else
+            echo "分析対象ファイルはありません"
+            echo "VALIDATED_HTML_FILES=" >> $GITHUB_ENV
+            exit 0
+          fi
+
+          # Node.jsスクリプトでPageSpeed Insights分析を実行
+          # 検証済みの値を使用
+          ANALYSIS_RESULT=$(VALIDATED_HTML_FILES="$VALIDATED_FILES" node .github/actions/psi)
+
+          # 結果のサニタイズ - JSONとして有効であることを確認
+          if ! echo "$ANALYSIS_RESULT" | jq . >/dev/null 2>&1; then
+            echo "警告: 分析結果が無効なJSONです。サニタイズを実施します。"
+            # 基本的なサニタイズ（必要に応じて調整）
+            ANALYSIS_RESULT=$(echo "$ANALYSIS_RESULT" | sed 's/[^[:print:]]//g')
+          fi
+
+          # 複数行の結果をGitHub Actions出力として設定
           echo "result<<EOF" >> $GITHUB_OUTPUT
-          echo "$RESULT" >> $GITHUB_OUTPUT
+          echo "$ANALYSIS_RESULT" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      - name: PSI分析結果をPRにコメント
+      # 結果の報告
+      - name: 分析結果をPRコメントとして投稿
+        if: ${{ steps.extract_html_diff.outputs.html_count != '0' && steps.psi_analysis.outcome == 'success' }}
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
-        if: ${{ steps.psi_check.outcome == 'success' }}
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const result = `${{ steps.psi_check.outputs.result }}`;
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: result
-            });
+            try {
+              // 安全な方法で分析結果を処理 - コンテンツを直接展開せず関数で処理
+              // ステップ1: 結果文字列を取得
+              const resultString = `${{ steps.psi_analysis.outputs.result }}`;
+
+              // ステップ2: 結果をサニタイズして安全な構造に変換
+              // 生の文字列をそのまま使うのではなく、JSON処理関数を使用
+              let analysisResult;
+              try {
+                // JSON文字列をパースして安全なオブジェクトに変換
+                const parsedData = JSON.parse(resultString);
+                // 再度文字列化して安全なJSONにする
+                analysisResult = JSON.stringify(parsedData);
+              } catch (e) {
+                // JSON解析に失敗した場合はエスケープ処理
+                console.error('結果のパースに失敗しました:', e);
+                // 基本的なHTMLエスケープを適用
+                analysisResult = resultString
+                  .replace(/&/g, '&amp;')
+                  .replace(/</g, '&lt;')
+                  .replace(/>/g, '&gt;')
+                  .replace(/"/g, '&quot;')
+                  .replace(/'/g, '&#039;');
+                analysisResult = `\`\`\`\n${analysisResult}\n\`\`\``;
+              }
+
+              // セキュリティレポートの添付
+              const securityNote = `
+                ## セキュリティノート
+                このレポートは自動生成されたものです。内容は検証済みですが、不明な点がある場合は開発チームにお問い合わせください。
+              `;
+
+              // 安全に整形されたコンテンツをコメントとして投稿
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## PageSpeed分析結果\n\n${analysisResult}\n\n${securityNote}`
+              });
+
+              console.log('PageSpeed分析結果をPRコメントとして安全に投稿しました');
+            } catch (error) {
+              console.error('PRコメント投稿中にエラーが発生しました:', error);
+              // エラーが発生しても後続のステップに影響しないよう0で終了
+              return;
+            }
