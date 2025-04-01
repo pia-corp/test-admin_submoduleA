@@ -74,7 +74,6 @@ jobs:
 
       # 依存関係をインストール
       - name: Install dependencies
-        if: steps.cache-node.outputs.cache-hit != 'true'
         run: npm ci
 
       # markuplintを実行
@@ -181,7 +180,7 @@ jobs:
 
       # デプロイ処理
       - name: 検証環境へファイルをデプロイ
-        uses: milanmk/actions-file-deployer@1.16
+        uses: milanmk/actions-file-deployer@3cf188f493103b5f12f11221186f8fbd07f2be10 # 1.16
         with:
           remote-protocol: 'sftp'
           remote-host: ${{ env.DEV_SERVER_HOST }}
