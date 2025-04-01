@@ -1,4 +1,16 @@
 {
+  {
+  "extends": ["markuplint:recommended"]
+  },
+  "parser": {
+    ".html$": "@markuplint/html-parser"
+  },
+  "specs": {
+    ".html$": "html5"
+  },
+  "excludeFiles": [
+    "node_modules/**/*"
+  ],
   "rules": {
     "attr-duplication": true,
     "attr-value-quotes": "double",
