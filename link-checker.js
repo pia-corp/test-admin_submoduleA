@@ -196,6 +196,7 @@ function extractUrlsFromJsonld(jsonObj) {
 // 追加: 単一のリンクをチェックする関数
 async function checkSingleLink(url, filePath, brokenLinks, callback) {
   try {
+    const before_url = url;
     // `http://www.${repository_name}` から始まるURLを変換
     const repoPattern = new RegExp(`^https://www\.${repositoryName}`, "i");
     // const repoPattern = new RegExp(`^https://www\.test-admin_submoduleA`, "i");
@@ -220,7 +221,7 @@ async function checkSingleLink(url, filePath, brokenLinks, callback) {
       if (!brokenLinks[filePath]) {
         brokenLinks[filePath] = [];
       }
-      brokenLinks[filePath].push(url);
+      brokenLinks[filePath].push(before_url);
 
       // カウンターをインクリメント
       totalBrokenLinksCount++;
