@@ -103,29 +103,15 @@ jobs:
               }
             }
 
-            // PRにコメントする内容を作成
-            let comment = ``;
-            if (message.length === 0) {
-              comment = `
-                ## リンク切れレポート
-                リンク切れは見つかりませんでした
+            const comment = `
+              ## リンク切れレポート
+              | ファイル名 | リンク切れパス |
+              | :-- | :-- |
+              ${message}
 
-                | ファイル名 | リンク切れパス |
-                | なし | なし |
-              `;
-            } else {
-              comment = `
-                ## リンク切れレポート
-
-                | ファイル名 | リンク切れパス |
-                | :-- | :-- |
-                ${message}
-
-                ## 注意
-                ・リンク切れは最大100件まで表示されます。
-              `;
-            }
-
+              ## 注意
+              ・リンク切れは最大100件まで表示されます。
+            `;
             github.rest.issues.createComment({
               ...context.repo,
               issue_number: context.issue.number,
