@@ -260,13 +260,6 @@ jobs:
           # 検証済みの値を使用
           ANALYSIS_RESULT=$(VALIDATED_HTML_FILES="$VALIDATED_FILES" node .github/actions/psi)
 
-          # 結果のサニタイズ - JSONとして有効であることを確認
-          if ! echo "$ANALYSIS_RESULT" | jq . >/dev/null 2>&1; then
-            echo "警告: 分析結果が無効なJSONです。サニタイズを実施します。"
-            # 基本的なサニタイズ（必要に応じて調整）
-            ANALYSIS_RESULT=$(echo "$ANALYSIS_RESULT" | sed 's/[^[:print:]]//g')
-          fi
-
           # 複数行の結果をGitHub Actions出力として設定
           echo "result<<EOF" >> $GITHUB_OUTPUT
           echo "$ANALYSIS_RESULT" >> $GITHUB_OUTPUT
@@ -308,7 +301,7 @@ jobs:
               // セキュリティレポートの添付
               const securityNote = `
                 ## セキュリティノート
-                このレポートは自動生成されたものです。内容は検証済みですが、不明な点がある場合は開発チームにお問い合わせください。
+                このレポートは自動生成されたものです。内容は検証済みですが、不明な点がある場合はお問い合わせください。
               `;
 
               // 安全に整形されたコンテンツをコメントとして投稿
