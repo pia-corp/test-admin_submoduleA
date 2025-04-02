@@ -61,7 +61,6 @@ jobs:
 
           for file in $FILES; do
             # markuplintを実行し、結果をJSONで出力
-            # 標準エラー出力も捕捉し、エラー時にはデフォルト値を設定
             RESULT=$(npx markuplint "$file" --format JSON 2>/dev/null || echo "[]")
 
             # jqの結果をいったん変数に格納し、空文字の場合は0として扱う
@@ -75,13 +74,14 @@ jobs:
               # 相対パスに変換
               RELATIVE_FILE=$(echo "$file" | sed 's|^\./||')
 
-              # マークダウン形式のコメントを作成
-              COMMENT="${COMMENT}### ファイル: \`${RELATIVE_FILE}\`\n\n"
-              COMMENT="${COMMENT}| 行 | 列 | メッセージ | ルール |\n"
-              COMMENT="${COMMENT}|---|---|---|---|\n"
+              # マークダウン形式のコメントを作成（実際の改行を使用）
+              COMMENT="${COMMENT}### ファイル: \`${RELATIVE_FILE}\`
+
+              | 行 | 列 | メッセージ | ルール |
+              |---|---|---|---|
+              "
 
               # 各エラーをテーブル行として追加
-              # jqにエラー処理を追加
               echo "$RESULT" | jq -c '.[]' 2>/dev/null | while read -r error; do
                 if [ -n "$error" ]; then
                   LINE=$(echo "$error" | jq -r '.location.line' 2>/dev/null || echo "N/A")
@@ -89,22 +89,26 @@ jobs:
                   MESSAGE=$(echo "$error" | jq -r '.message' 2>/dev/null || echo "N/A")
                   RULE=$(echo "$error" | jq -r '.ruleId' 2>/dev/null || echo "N/A")
 
-                  COMMENT="${COMMENT}| ${LINE} | ${COL} | ${MESSAGE} | ${RULE} |\n"
+                  COMMENT="${COMMENT}| ${LINE} | ${COL} | ${MESSAGE} | ${RULE} |
+                "
                 fi
               done
 
-              COMMENT="${COMMENT}\n"
+              COMMENT="${COMMENT}
+              "
             fi
           done
 
           # 結果をファイルに出力
-          echo -e "$COMMENT" > markuplint-results.md
+          echo "$COMMENT" > markuplint-results.md
 
-          # 環境変数に保存（後でコメントに使用）
-          echo "ERROR_COUNT=$ERROR_COUNT" >> $GITHUB_ENV
-          echo "COMMENT<<EOF" >> $GITHUB_ENV
-          echo "$COMMENT" >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          # GitHub環境変数に保存（EOFデリミタを使用して複数行のテキストを正しく処理）
+          {
+            echo "ERROR_COUNT=$ERROR_COUNT"
+            echo "COMMENT<<EOF"
+            echo "$COMMENT"
+            echo "EOF"
+          } >> $GITHUB_ENV
 
       - name: Error handling
         if: ${{ steps.markuplint.outcome == 'failure' }}
