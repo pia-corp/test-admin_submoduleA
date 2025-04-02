@@ -8,7 +8,7 @@
     "npm-run-all": "^4.1.5"
   },
   "scripts": {
-    "markuplint": "markuplint -- public/**/*.html",
+    "markuplint": "markuplint -- public/**/*.html --local ja",
     "check": "ncu",
     "update": "ncu -u"
   }
