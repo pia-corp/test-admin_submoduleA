@@ -63,7 +63,6 @@ jobs:
             # markuplintを実行し、結果をJSONで出力
             RESULT=$(npx markuplint "$file" --format JSON)
 
-
             # エラーがある場合のみ処理
             if [ "$(echo "$RESULT" | jq 'length')" -gt 0 ]; then
               ERROR_COUNT=$((ERROR_COUNT + 1))
@@ -239,7 +238,7 @@ jobs:
       REMOTE_PROJECT_PATH: ${{ vars.DEVELOPMENT_REMOTE_PATH }}/${{ github.event.repository.name }}
 
       # デプロイ設定
-      SYNC_MODE: "full"
+      SYNC_MODE: ${{ vars.SYNC_MODE }}
 
     steps:
       # リポジトリのコードをチェックアウト
