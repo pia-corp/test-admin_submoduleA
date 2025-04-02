@@ -106,25 +106,22 @@ jobs:
             echo "COMMENT_BODY=No markuplint violations found." >> $GITHUB_ENV
           else
             echo "Violations found. Generating comment..."
-            # --- ここからテーブル形式に変更 ---
-            # jq で各違反をテーブル行に変換し、改行で結合
+            # jq で各違反をテーブル行に変換
             table_rows=$(echo "$violations_array" | jq -r '
               map("| \(.line // "?"):\(.col // "?") | `\(.filePath // "N/A" | sub(".*/public/"; ""))` | `\(.ruleId // "N/A")` | \(.message // "N/A" | gsub("\\|"; "\\\\|")) |") | .[]'
             )
 
-            comment_body=`
-              ### :warning: Markuplint Violations Found
-              | Line | File | Rule | Message |
-              |------|------|------|---------|
-              ${table_rows}" # table_rows 変数を展開して結合
-            `;
-            # --- ここまでテーブル形式に変更 ---
-
-            # 環境変数に設定 (複数行対応)
+            # --- ここを修正 ---
+            # 中間の comment_body 変数を使わず、直接 GITHUB_ENV に書き込む
             echo 'COMMENT_BODY<<EOF' >> $GITHUB_ENV
-            # 念のため変数を {} で囲む
-            echo "${comment_body}" >> $GITHUB_ENV
+            echo "### :warning: Markuplint Violations Found" >> $GITHUB_ENV
+            echo "" >> $GITHUB_ENV # Markdownの表示のために空行を追加
+            echo "| Line | File | Rule | Message |" >> $GITHUB_ENV
+            echo "|------|------|------|---------|" >> $GITHUB_ENV
+            # jq で生成したテーブル行を書き込む
+            echo "${table_rows}" >> $GITHUB_ENV
             echo 'EOF' >> $GITHUB_ENV
+            # --- 修正ここまで ---
           fi
 
       - name: プルリクエストにコメントを投稿
