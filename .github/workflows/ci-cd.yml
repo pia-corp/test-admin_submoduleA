@@ -84,12 +84,11 @@ jobs:
           if ! echo "$results" | jq empty > /dev/null 2>&1; then
             echo "Error: markuplint-results.json does not contain valid JSON."
             echo "Output:"
-            cat markuplint-results.json # 実際の出力内容をエラーログに残す
+            cat markuplint-results.json
             echo "COMMENT_BODY=Error processing markuplint results (invalid JSON)." >> $GITHUB_ENV
             exit 0 # または exit 1
           fi
 
-          # --- ここを修正 ---
           # 結果が配列なので、jq '.' で直接配列を取得する
           violations_array=$(echo "$results" | jq '.')
 
@@ -101,26 +100,32 @@ jobs:
               echo "COMMENT_BODY=Error processing markuplint results (unexpected format)." >> $GITHUB_ENV
               exit 0 # または exit 1
           fi
-          # --- 修正ここまで ---
 
           if [ "$(echo "$violations_array" | jq 'length')" -eq 0 ]; then
             echo "No violations found."
             echo "COMMENT_BODY=No markuplint violations found." >> $GITHUB_ENV
           else
             echo "Violations found. Generating comment..."
+            # --- ここからテーブル形式に変更 ---
             comment_body="### :warning: Markuplint Violations Found\n\n"
-            # 配列 (violations_array) を直接処理するように jq クエリを修正
-            # 各フィールドが存在しない場合に備えてデフォルト値 (//) を設定
-            # map(...) | .[] で各違反をMarkdown文字列に変換し、改行で結合
-            comment_body+=$(echo "$violations_array" | jq -r '
-              map("**File:** `\(.filePath // "N/A")`\n**Line:** \(.line // "?"):\(.col // "?")\n**Rule:** `\(.ruleId // "N/A")`\n**Message:** \(.message // "N/A")\n---") | .[]'
+            # テーブルヘッダーを追加
+            comment_body+="| Line | File | Rule | Message |\n"
+            comment_body+="|------|------|------|---------|\n"
+
+            # jq で各違反をテーブル行に変換し、改行で結合
+            # filePath から ".*/public/" に一致する部分を削除して表示
+            table_rows=$(echo "$violations_array" | jq -r '
+              map("| \(.line // "?"):\(.col // "?") | `\(.filePath // "N/A" | sub(".*/public/"; ""))` | `\(.ruleId // "N/A")` | \(.message // "N/A" | gsub("\\|"; "\\\\|")) |") | .[]'
             )
+            comment_body+="$table_rows"
+            # --- ここまでテーブル形式に変更 ---
 
             # 環境変数に設定 (複数行対応)
             echo 'COMMENT_BODY<<EOF' >> $GITHUB_ENV
-            echo -e "$comment_body" >> $GITHUB_ENV
+            echo "$comment_body" >> $GITHUB_ENV # -e オプションは必須ではないことが多い
             echo 'EOF' >> $GITHUB_ENV
           fi
+        shell: bash {0}
 
       # - name: Install jq # jqコマンドをインストール (コメント生成に必要)
       #   if: steps.create-comment.outputs.COMMENT_BODY != '' && steps.create-comment.outputs.COMMENT_BODY != 'No markuplint violations found.' # 問題があった場合のみ実行
