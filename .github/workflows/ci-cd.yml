@@ -71,19 +71,49 @@ jobs:
         # markuplintのステップが成功したか、またはエラーがあっても続行された場合に実行
         if: steps.run-markuplint.outcome == 'success' || steps.run-markuplint.outcome == 'failure'
         run: |
-          results=$(cat markuplint-results.json)
-          violations=$(echo "$results" | jq '.violations') # jqコマンドで violations 配列を取得
+          # ファイルが存在し、空でないことを確認
+          if [ ! -s markuplint-results.json ]; then
+            echo "markuplint-results.json is empty or not found. Assuming no violations."
+            echo "COMMENT_BODY=No markuplint violations found or analysis could not be run." >> $GITHUB_ENV
+            exit 0
+          fi
 
-          if [ "$(echo "$violations" | jq 'length')" -eq 0 ]; then
+          results=$(cat markuplint-results.json)
+
+          # results が有効なJSONかチェック
+          if ! echo "$results" | jq empty > /dev/null 2>&1; then
+            echo "Error: markuplint-results.json does not contain valid JSON."
+            echo "Output:"
+            cat markuplint-results.json # 実際の出力内容をエラーログに残す
+            echo "COMMENT_BODY=Error processing markuplint results (invalid JSON)." >> $GITHUB_ENV
+            exit 0 # または exit 1
+          fi
+
+          # --- ここを修正 ---
+          # 結果が配列なので、jq '.' で直接配列を取得する
+          violations_array=$(echo "$results" | jq '.')
+
+          # 配列形式でない場合のエラーチェック (念のため)
+          if [ "$violations_array" == "null" ] || ! echo "$violations_array" | jq 'type == "array"' | grep -q true; then
+              echo "Error: Could not extract violations array from markuplint results."
+              echo "Result content:"
+              cat markuplint-results.json
+              echo "COMMENT_BODY=Error processing markuplint results (unexpected format)." >> $GITHUB_ENV
+              exit 0 # または exit 1
+          fi
+          # --- 修正ここまで ---
+
+          if [ "$(echo "$violations_array" | jq 'length')" -eq 0 ]; then
             echo "No violations found."
             echo "COMMENT_BODY=No markuplint violations found." >> $GITHUB_ENV
           else
             echo "Violations found. Generating comment..."
-            # Markdown形式でコメント本文を生成
             comment_body="### :warning: Markuplint Violations Found\n\n"
-            comment_body+=$(echo "$violations" | jq -r '
-              map("**File:** `\(.filePath)`\n**Line:** \(.line):\(.col)\n**Rule:** `\(.ruleId)`\n**Message:** \(.message)\n---") |
-              jq -s -R -c 'join("\n")' | sed 's/\\n/\n/g' | sed 's/^"//' | sed 's/"$//'
+            # 配列 (violations_array) を直接処理するように jq クエリを修正
+            # 各フィールドが存在しない場合に備えてデフォルト値 (//) を設定
+            # map(...) | .[] で各違反をMarkdown文字列に変換し、改行で結合
+            comment_body+=$(echo "$violations_array" | jq -r '
+              map("**File:** `\(.filePath // "N/A")`\n**Line:** \(.line // "?"):\(.col // "?")\n**Rule:** `\(.ruleId // "N/A")`\n**Message:** \(.message // "N/A")\n---") | .[]'
             )
 
             # 環境変数に設定 (複数行対応)
@@ -91,8 +121,6 @@ jobs:
             echo -e "$comment_body" >> $GITHUB_ENV
             echo 'EOF' >> $GITHUB_ENV
           fi
-      #   # jqコマンドがインストールされていない場合があるので追加
-      #   shell: bash {0}
 
       # - name: Install jq # jqコマンドをインストール (コメント生成に必要)
       #   if: steps.create-comment.outputs.COMMENT_BODY != '' && steps.create-comment.outputs.COMMENT_BODY != 'No markuplint violations found.' # 問題があった場合のみ実行
