@@ -107,10 +107,10 @@ jobs:
           else
             echo "Violations found. Generating comment..."
             # --- ここからテーブル形式に変更 ---
-            comment_body="### :warning: Markuplint Violations Found\n\n"
-            # テーブルヘッダーを追加
-            comment_body+="| Line | File | Rule | Message |\n"
-            comment_body+="|------|------|------|---------|\n"
+            comment_body=`### :warning: Markuplint Violations Found
+            | Line | File | Rule | Message |
+            |------|------|------|---------|
+            `
 
             # jq で各違反をテーブル行に変換し、改行で結合
             # filePath から ".*/public/" に一致する部分を削除して表示
