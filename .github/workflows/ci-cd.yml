@@ -61,10 +61,15 @@ jobs:
 
           for file in $FILES; do
             # markuplintを実行し、結果をJSONで出力
-            RESULT=$(npx markuplint "$file" --format JSON)
+            # 標準エラー出力も捕捉し、エラー時にはデフォルト値を設定
+            RESULT=$(npx markuplint "$file" --format JSON 2>/dev/null || echo "[]")
+
+            # jqの結果をいったん変数に格納し、空文字の場合は0として扱う
+            LENGTH=$(echo "$RESULT" | jq 'length' 2>/dev/null || echo 0)
+            LENGTH=${LENGTH:-0}  # LENGTH が空の場合は0を設定
 
             # エラーがある場合のみ処理
-            if [ "$(echo "$RESULT" | jq 'length')" -gt 0 ]; then
+            if [ "$LENGTH" -gt 0 ]; then
               ERROR_COUNT=$((ERROR_COUNT + 1))
 
               # 相対パスに変換
@@ -76,13 +81,16 @@ jobs:
               COMMENT="${COMMENT}|---|---|---|---|\n"
 
               # 各エラーをテーブル行として追加
-              echo "$RESULT" | jq -c '.[]' | while read -r error; do
-                LINE=$(echo "$error" | jq -r '.location.line')
-                COL=$(echo "$error" | jq -r '.location.col')
-                MESSAGE=$(echo "$error" | jq -r '.message')
-                RULE=$(echo "$error" | jq -r '.ruleId')
+              # jqにエラー処理を追加
+              echo "$RESULT" | jq -c '.[]' 2>/dev/null | while read -r error; do
+                if [ -n "$error" ]; then
+                  LINE=$(echo "$error" | jq -r '.location.line' 2>/dev/null || echo "N/A")
+                  COL=$(echo "$error" | jq -r '.location.col' 2>/dev/null || echo "N/A")
+                  MESSAGE=$(echo "$error" | jq -r '.message' 2>/dev/null || echo "N/A")
+                  RULE=$(echo "$error" | jq -r '.ruleId' 2>/dev/null || echo "N/A")
 
-                COMMENT="${COMMENT}| ${LINE} | ${COL} | ${MESSAGE} | ${RULE} |\n"
+                  COMMENT="${COMMENT}| ${LINE} | ${COL} | ${MESSAGE} | ${RULE} |\n"
+                fi
               done
 
               COMMENT="${COMMENT}\n"
@@ -90,13 +98,20 @@ jobs:
           done
 
           # 結果をファイルに出力
-          echo "$COMMENT" > markuplint-results.md
+          echo -e "$COMMENT" > markuplint-results.md
 
           # 環境変数に保存（後でコメントに使用）
           echo "ERROR_COUNT=$ERROR_COUNT" >> $GITHUB_ENV
           echo "COMMENT<<EOF" >> $GITHUB_ENV
           echo "$COMMENT" >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
+
+      - name: Error handling
+        if: ${{ steps.markuplint.outcome == 'failure' }}
+        run: |
+          echo $
+          exit 1
+          continue-on-error: true
 
       - name: Comment on PR
         if: env.ERROR_COUNT != '0'
