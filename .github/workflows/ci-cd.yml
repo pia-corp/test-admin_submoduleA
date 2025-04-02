@@ -56,8 +56,7 @@ jobs:
         # publicフォルダ内のhtmlファイルを対象とする (--format jsonでJSON形式出力)
         # 問題があってもワークフローを続行させるために continue-on-error: true を設定
         run: |
-          npx markuplint public/**/*.html --format json > markuplint-results.json || true
-          # npm run markuplint -- public/**/*.html --format json > markuplint-results.json || true
+          npx markuplint public/**/*.html --locale ja --format json > markuplint-results.json || true
         continue-on-error: true # lintエラーでジョブが失敗しないようにする
 
       - name: Dump markuplint results # デバッグ用ステップ
