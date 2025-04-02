@@ -1,8 +1,4 @@
 {
-  "extends": ["markuplint:recommended"],
-  "parser": {
-    ".html$": "@markuplint/html-parser"
-  },
   "excludeFiles": [
     "node_modules/**/*"
   ],

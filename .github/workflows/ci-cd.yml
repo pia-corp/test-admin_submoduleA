@@ -139,34 +139,6 @@ jobs:
               body: commentBody
             });
 
-      # - name: Error handling
-      #   if: ${{ steps.markuplint.outcome == 'failure' }}
-      #   run: |
-      #     echo $
-      #     exit 1
-      #     continue-on-error: true
-
-      # - name: Comment on PR
-      #   if: env.ERROR_COUNT != '0'
-      #   uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
-      #   with:
-      #     github-token: ${{ secrets.GITHUB_TOKEN }}
-      #     script: |
-      #       const fs = require('fs');
-
-      #       const comment = `# Markuplint 検査結果 🔍
-
-      #       ${process.env.COMMENT}
-
-      #       詳細は [markuplint のドキュメント](https://markuplint.dev/) を参照してください。`;
-
-      #       github.rest.issues.createComment({
-      #         issue_number: context.issue.number,
-      #         owner: context.repo.owner,
-      #         repo: context.repo.repo,
-      #         body: comment
-      #       });
-
   # =============================
   # リポジトリ内のHTMLファイルのリンク切れをチェックします。見つかったリンク切れはプルリクエストのコメントとして報告されます。
   # =============================
@@ -282,7 +254,7 @@ jobs:
       REMOTE_PROJECT_PATH: ${{ vars.DEVELOPMENT_REMOTE_PATH }}/${{ github.event.repository.name }}
 
       # デプロイ設定
-      SYNC_MODE: ${{ vars.SYNC_MODE }}
+      SYNC_MODE: ${{ vars.SYNC_MODE || 'full' }}
 
     steps:
       # リポジトリのコードをチェックアウト
