@@ -107,19 +107,18 @@ jobs:
           else
             echo "Violations found. Generating comment..."
             # --- ここからテーブル形式に変更 ---
-            comment_body=`### :warning: Markuplint Violations Found
-            `
-            comment_body+=`| Line | File | Rule | Message |
-            `
-            comment_body+=`|------|------|------|---------|
-            `
-
             # jq で各違反をテーブル行に変換し、改行で結合
             # filePath から ".*/public/" に一致する部分を削除して表示
             table_rows=$(echo "$violations_array" | jq -r '
               map("| \(.line // "?"):\(.col // "?") | `\(.filePath // "N/A" | sub(".*/public/"; ""))` | `\(.ruleId // "N/A")` | \(.message // "N/A" | gsub("\\|"; "\\\\|")) |") | .[]'
             )
-            comment_body+="$table_rows"
+
+            comment_body=`
+              ### :warning: Markuplint Violations Found
+              | Line | File | Rule | Message |
+              |------|------|------|---------|
+              ${table_rows}
+            `;
             # --- ここまでテーブル形式に変更 ---
 
             # 環境変数に設定 (複数行対応)
