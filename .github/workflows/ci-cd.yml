@@ -60,6 +60,12 @@ jobs:
           # npm run markuplint -- public/**/*.html --format json > markuplint-results.json || true
         continue-on-error: true # lintエラーでジョブが失敗しないようにする
 
+      - name: Dump markuplint results # デバッグ用ステップ
+        run: |
+          echo "--- markuplint-results.json content ---"
+          cat markuplint-results.json || echo "markuplint-results.json not found or empty"
+          echo "--- end of content ---"
+
       - name: Create Comment Body # コメント内容を作成
         id: create-comment
         # markuplintのステップが成功したか、またはエラーがあっても続行された場合に実行
@@ -85,14 +91,15 @@ jobs:
             echo -e "$comment_body" >> $GITHUB_ENV
             echo 'EOF' >> $GITHUB_ENV
           fi
-        # # jqコマンドがインストールされていない場合があるので追加
-        # shell: bash {0}
+      #   # jqコマンドがインストールされていない場合があるので追加
+      #   shell: bash {0}
 
       # - name: Install jq # jqコマンドをインストール (コメント生成に必要)
       #   if: steps.create-comment.outputs.COMMENT_BODY != '' && steps.create-comment.outputs.COMMENT_BODY != 'No markuplint violations found.' # 問題があった場合のみ実行
       #   run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Post Comment to Pull Request # プルリクエストにコメントを投稿
+
+      - name: プルリクエストにコメントを投稿
         # コメント内容が存在し、かつ "No violations found." でない場合のみ実行
         if: env.COMMENT_BODY != '' && env.COMMENT_BODY != 'No markuplint violations found.'
         uses: actions/github-script@v7
