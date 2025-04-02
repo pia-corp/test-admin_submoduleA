@@ -46,5 +46,15 @@
     "required-h1": false,
     "use-list": false,
     "wai-aria": false
-  }
+  },
+  "nodeRules": [
+    {
+      "tagName": "img",
+      "attributes": {
+        "src": {
+          "ignore": "^data:image/"
+        }
+      }
+    }
+  ]
 }
