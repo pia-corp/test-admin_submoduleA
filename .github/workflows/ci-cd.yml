@@ -24,7 +24,7 @@ jobs:
     # - ベースブランチがmain
     # - 実行者がdependabotではない
     # - ヘッドブランチ名がdevelopで始まる
-    if: github.base_ref == 'main' && github.actor != 'dependabot[bot]' && startsWith(github.head_ref, 'develop')
+    if: always() && github.base_ref == 'main' && github.actor != 'dependabot[bot]' && startsWith(github.head_ref, 'develop')
 
     runs-on: ubuntu-latest
     # 実行時間が3分を超えた場合、ワークフローを強制終了
