@@ -43,7 +43,7 @@ jobs:
 
       # Node.js環境のセットアップ
       - name: Node.jsセットアップ
-        uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e # v3.5.1
+        uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e # v4.3.0
         with:
           node-version: 'latest'  # 最新のNode.jsバージョンを使用
 
@@ -143,7 +143,8 @@ jobs:
   # =============================
   check-links:
     needs: html-linter
-    if: always()
+    if: always() && github.base_ref == 'main' && github.actor != 'dependabot[bot]' && startsWith(github.head_ref, 'develop')
+
     name: リンク切れチェック
     runs-on: ubuntu-latest
     # 実行時間が5分を超えた場合、ワークフローを強制終了
@@ -170,7 +171,7 @@ jobs:
 
       # Node.js環境のセットアップ
       - name: Node.jsセットアップ
-        uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e # v3.5.1
+        uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e # v4.3.0
         with:
           node-version: 'latest'  # 最新のNode.jsバージョンを使用
 
@@ -226,7 +227,7 @@ jobs:
   # =============================
   page_speed_analysis:
     needs: check-links
-    if: always()
+    if: always() && github.base_ref == 'main' && github.actor != 'dependabot[bot]' && startsWith(github.head_ref, 'develop')
     name: パフォーマンス分析
     runs-on: ubuntu-latest
     # 実行時間が30分を超えた場合、ワークフローを強制終了
@@ -393,6 +394,7 @@ jobs:
             });
 
   create-release-tag:
+    if: github.base_ref == 'main' && github.actor != 'dependabot[bot]' && startsWith(github.head_ref, 'develop')
     needs: page_speed_analysis
     runs-on: ubuntu-latest
     timeout-minutes: 3
