@@ -394,7 +394,7 @@ jobs:
             });
 
   create-release-tag:
-    if: github.base_ref == 'main' && github.actor != 'dependabot[bot]' && startsWith(github.head_ref, 'develop')
+    if: always() && github.base_ref == 'main' && github.actor != 'dependabot[bot]' && startsWith(github.head_ref, 'develop')
     needs: page_speed_analysis
     runs-on: ubuntu-latest
     timeout-minutes: 3
