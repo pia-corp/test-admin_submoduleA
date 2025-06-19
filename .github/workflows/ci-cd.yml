@@ -304,8 +304,7 @@ jobs:
           fi
 
           # 秘密鍵のセットアップ
-          echo "${{ secrets.DEVELOPMENT_SSH_KEY }}" > ~/.ssh/id_rsa.enc
-          echo "${{ secrets.SSH_PASSPHRASE }}" | openssl rsa -in ~/.ssh/id_rsa.enc -out ~/.ssh/id_rsa
+          echo "${{ secrets.DEVELOPMENT_SSH_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
           # SSH設定ファイルの作成 - ヒアドキュメントの代わりに複数のechoを使用
