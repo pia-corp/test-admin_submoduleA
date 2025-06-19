@@ -398,6 +398,8 @@ jobs:
     needs: page_speed_analysis
     runs-on: ubuntu-latest
     timeout-minutes: 3
+    permissions:
+      contents: write
 
     steps:
       - name: リポジトリをチェックアウト
