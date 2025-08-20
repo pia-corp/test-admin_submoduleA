@@ -37,13 +37,13 @@ jobs:
     steps:
       # リポジトリのコードをチェックアウト
       - name: リポジトリをチェックアウト
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           persist-credentials: false  # 不要な認証情報を保持しない
 
       # Node.js環境のセットアップ
       - name: Node.jsセットアップ
-        uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e # v4.3.0
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 'latest'  # 最新のNode.jsバージョンを使用
 
@@ -165,13 +165,13 @@ jobs:
     steps:
       # リポジトリのコードをチェックアウト
       - name: リポジトリをチェックアウト
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           persist-credentials: false  # 不要な認証情報を保持しない
 
       # Node.js環境のセットアップ
       - name: Node.jsセットアップ
-        uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e # v4.3.0
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: 'latest'  # 最新のNode.jsバージョンを使用
 
@@ -261,7 +261,7 @@ jobs:
     steps:
       # リポジトリのコードをチェックアウト
       - name: リポジトリをチェックアウト
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
           persist-credentials: false  # 不要な認証情報を保持しない
 
@@ -341,15 +341,57 @@ jobs:
         run: |
           # mainブランチと比較するためにfetch
           git fetch origin main || echo "mainブランチの取得に失敗しました。新規リポジトリの場合は無視できます。"
-
-          # publicディレクトリ配下のHTMLファイルのみを抽出
-          HTML_FILES=$(git diff --name-only origin/main HEAD | grep -E 'public/.*\.html$' | sed 's#^public/##g' | tr '\n' ',' || echo "")
-
-          # 末尾のカンマを削除
-          HTML_FILES=${HTML_FILES%,}
-
-          # 結果の処理
-          if [ -n "$HTML_FILES" ]; then
+          
+          # デバッグ情報を追加
+          echo "=== デバッグ情報 ==="
+          echo "現在のブランチ: $(git branch --show-current)"
+          echo "HEAD: $(git rev-parse HEAD)"
+          echo "origin/main: $(git rev-parse origin/main)"
+          echo "PR base SHA: ${{ github.event.pull_request.base.sha }}"
+          echo "PR head SHA: ${{ github.event.pull_request.head.sha }}"
+          
+          # 全体の差分を確認
+          echo "=== 全ファイル差分 ==="
+          git diff --name-only origin/main HEAD || echo "差分取得失敗"
+          
+          # 複数の方法でHTMLファイル変更を検出
+          HTML_FILES=""
+          
+          # 方法1: 通常のdiff
+          FILES1=$(git diff --name-only origin/main...HEAD | grep -E 'public/.*\.html$' | sed 's#^public/##g' || echo "")
+          
+          # 方法2: PRイベント情報から
+          if [ -n "${{ github.event.pull_request.base.sha }}" ] && [ -n "${{ github.event.pull_request.head.sha }}" ]; then
+            FILES2=$(git diff --name-only ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} | grep -E 'public/.*\.html$' | sed 's#^public/##g' || echo "")
+          else
+            FILES2=""
+          fi
+          
+          # 方法3: 最新の差分
+          FILES3=$(git diff --name-only origin/main HEAD | grep -E 'public/.*\.html$' | sed 's#^public/##g' || echo "")
+          
+          echo "=== 検出結果 ==="
+          echo "方法1 (origin/main...HEAD): '$FILES1'"
+          echo "方法2 (PR SHA): '$FILES2'"
+          echo "方法3 (origin/main HEAD): '$FILES3'"
+          
+          # どれかで検出されたファイルを使用（優先順位: FILES2 > FILES1 > FILES3）
+          if [ -n "$FILES2" ]; then
+            HTML_FILES="$FILES2"
+            echo "PRイベント情報からHTMLファイル変更を検出"
+          elif [ -n "$FILES1" ]; then
+            HTML_FILES="$FILES1"
+            echo "three-dot diff からHTMLファイル変更を検出"
+          elif [ -n "$FILES3" ]; then
+            HTML_FILES="$FILES3"
+            echo "通常diff からHTMLファイル変更を検出"
+          fi
+          
+          # カンマ区切りに変換し、末尾のカンマを削除
+          HTML_FILES=$(echo "$HTML_FILES" | tr '\n' ',' | sed 's/,$//')
+          
+          # ファイル数をカウント
+          if [ -n "$HTML_FILES" ] && [ "$HTML_FILES" != "" ]; then
             HTML_COUNT=$(echo "$HTML_FILES" | awk -F',' '{print NF}')
             echo "変更されたHTMLファイル: $HTML_FILES (合計: $HTML_COUNT件)"
           else
@@ -357,21 +399,53 @@ jobs:
             HTML_FILES=""
             HTML_COUNT=0
           fi
-
+          
           # GitHub Actions出力を設定
           echo "html_files=${HTML_FILES}" >> $GITHUB_OUTPUT
           echo "html_count=${HTML_COUNT}" >> $GITHUB_OUTPUT
 
+      # フォールバック機能
+      - name: フォールバック - 強制実行の判定
+        if: ${{ steps.extract_html_diff.outputs.html_count == '0' || steps.extract_html_diff.outputs.html_count == '' }}
+        id: fallback_check
+        run: |
+          FORCE_EXECUTE=false
+          
+          # PRタイトルに [force-psi] があるかチェック
+          if echo "${{ github.event.pull_request.title }}" | grep -q "\[force-psi\]"; then
+            echo "PRタイトルに[force-psi]が含まれているため、強制実行します"
+            FORCE_EXECUTE=true
+          fi
+          
+          # コミットメッセージに [force-psi] があるかチェック
+          if git log --oneline -5 | grep -q "\[force-psi\]"; then
+            echo "コミットメッセージに[force-psi]が含まれているため、強制実行します"
+            FORCE_EXECUTE=true
+          fi
+          
+          # 強制実行の場合はindex.htmlを対象にする
+          if [ "$FORCE_EXECUTE" = true ]; then
+            echo "html_files=index.html" >> $GITHUB_OUTPUT
+            echo "html_count=1" >> $GITHUB_OUTPUT
+            echo "force_execute=true" >> $GITHUB_OUTPUT
+          else
+            echo "force_execute=false" >> $GITHUB_OUTPUT
+          fi
+
       # パフォーマンス分析
       - name: PageSpeed Insights分析を実行
-        if: ${{ steps.extract_html_diff.outputs.html_count != '0' }}
+        if: ${{ steps.extract_html_diff.outputs.html_count != '0' && steps.extract_html_diff.outputs.html_count != '' || steps.fallback_check.outputs.force_execute == 'true' }}
         env:
           PSI_API_KEY: ${{ secrets.PSI_API_KEY }}
           BASE_URL: "https://piapiapia.xsrv.jp/dev/${{ github.event.repository.name }}"
-          HTML_FILES: ${{ steps.extract_html_diff.outputs.html_files }}
+          HTML_FILES: ${{ steps.fallback_check.outputs.force_execute == 'true' && steps.fallback_check.outputs.html_files || steps.extract_html_diff.outputs.html_files }}
         id: psi_analysis
         run: |
-          echo "分析対象ファイル: ${{ steps.extract_html_diff.outputs.html_files }}"
+          if [ "${{ steps.fallback_check.outputs.force_execute }}" = "true" ]; then
+            echo "分析対象ファイル（強制実行）: ${{ steps.fallback_check.outputs.html_files }}"
+          else
+            echo "分析対象ファイル: ${{ steps.extract_html_diff.outputs.html_files }}"
+          fi
           RESULT=$(node .github/actions/psi)
           echo "result<<EOF" >> $GITHUB_OUTPUT
           echo "$RESULT" >> $GITHUB_OUTPUT
@@ -379,7 +453,7 @@ jobs:
 
       # 結果の報告
       - name: PSI分析結果をPRにコメント
-        if: ${{ steps.extract_html_diff.outputs.html_count != '0' && steps.psi_analysis.outcome == 'success' }}
+        if: ${{ (steps.extract_html_diff.outputs.html_count != '0' && steps.extract_html_diff.outputs.html_count != '' || steps.fallback_check.outputs.force_execute == 'true') && steps.psi_analysis.outcome == 'success' }}
         uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7.0.1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -402,7 +476,7 @@ jobs:
 
     steps:
       - name: リポジトリをチェックアウト
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
 
       - name: 前回のリリースタグを取得する
         id: fetch_previous_tag
