@@ -533,7 +533,7 @@ jobs:
         run: |
           result='${{ steps.psi_analysis.outputs.result }}'
           node -e '
-          const psiResults = JSON.parse(process.env.result);
+          const psiResults = process.env.result;
           let blocks = [];
 
           const makeSection = (url, r) => ({
