@@ -281,7 +281,11 @@ jobs:
           curl -X POST \
             -H "Authorization: Bearer ${{ secrets.SLACK_BOT_TOKEN }}" \
             -H 'Content-type: application/json' \
-            --data '${{ steps.format-links-slack.outputs.payload }}' \
+            --data "{
+              \"channel\": \"${{ secrets.SLACK_CHANNEL_ID }}\",
+              \"text\": \"リンク切れレポート\",
+              \"blocks\": $(echo '${{ steps.format-links-slack.outputs.payload }}' | jq '.blocks')
+            }" \
             https://slack.com/api/chat.postMessage
 
 
@@ -584,5 +588,9 @@ jobs:
           curl -X POST \
             -H "Authorization: Bearer ${{ secrets.SLACK_BOT_TOKEN }}" \
             -H 'Content-type: application/json' \
-            --data '${{ steps.format-psi-slack.outputs.payload }}' \
+            --data "{
+              \"channel\": \"${{ secrets.SLACK_CHANNEL_ID }}\",
+              \"text\": \"リンク切れレポート\",
+              \"blocks\": $(echo '${{ steps.format-psi-slack.outputs.payload }}' | jq '.blocks')
+            }" \
             https://slack.com/api/chat.postMessage
