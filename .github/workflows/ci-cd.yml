@@ -222,56 +222,51 @@ jobs:
               body: comment
             });
 
-      # リンク切れ結果をSlack向けに整形（Block Kit）
       - name: Format Broken Links Slack BlockKit message
         id: format-links-slack
         run: |
           errors='${{ steps.link-checker.outputs.errors }}'
-          node -e "
+          node -e '
           const errorsArray = JSON.parse(process.env.errors);
           let blocks = [];
           let allMessages = [];
 
           for (let file in errorsArray) {
             for (let i = 0; i < errorsArray[file].length; i++) {
-              allMessages.push({ file, url: errorsArray[file][i] });
+              allMessages.push({ file: file, url: errorsArray[file][i] });
             }
           }
 
           if (allMessages.length === 0) {
             blocks.push({
-              type: 'section',
-              text: { type: 'mrkdwn', text: '✅ リンク切れは検出されませんでした。' }
+              type: "section",
+              text: { type: "mrkdwn", text: "✅ リンク切れは検出されませんでした。" }
             });
           } else {
-            allMessages.slice(0, 5).forEach(item => {
+            allMessages.slice(0,5).forEach(item => {
               blocks.push({
-                type: 'section',
+                type: "section",
                 text: {
-                  type: 'mrkdwn',
+                  type: "mrkdwn",
                   text: `*ファイル*: \`${item.file}\`\n:link: ${item.url}`
                 }
               });
-              blocks.push({ type: 'divider' });
+              blocks.push({ type: "divider" });
             });
             if (allMessages.length > 5) {
               blocks.push({
-                type: 'section',
+                type: "section",
                 text: {
-                  type: 'mrkdwn',
+                  type: "mrkdwn",
                   text: `…他 *${allMessages.length - 5} 件* のリンク切れがあります。詳細は GitHub の PR コメントを確認してください。`
                 }
               });
             }
           }
 
-          const payload = {
-            text: 'リンク切れレポート',
-            blocks
-          };
-
-          console.log('::set-output name=payload::' + JSON.stringify(payload));
-          "
+          const payload = { text: "リンク切れレポート", blocks };
+          console.log("::set-output name=payload::" + JSON.stringify(payload));
+          '
         env:
           errors: ${{ steps.link-checker.outputs.errors }}
 
@@ -533,19 +528,18 @@ jobs:
               body: result
             });
 
-      # PSI結果をSlack向けに整形（Block Kit）
       - name: Format PSI Slack BlockKit message
         id: format-psi-slack
         run: |
           result='${{ steps.psi_analysis.outputs.result }}'
-          node -e "
+          node -e '
           const psiResults = JSON.parse(process.env.result);
           let blocks = [];
 
           const makeSection = (url, r) => ({
-            type: 'section',
+            type: "section",
             text: {
-              type: 'mrkdwn',
+              type: "mrkdwn",
               text: `*<${url}|${url}>*\nPerformance: *${r.performance}* | Accessibility: *${r.accessibility}* | Best Practices: *${r.best_practices}* | SEO: *${r.seo}*`
             }
           });
@@ -553,34 +547,31 @@ jobs:
           const urls = Object.keys(psiResults);
           if (urls.length === 0) {
             blocks.push({
-              type: 'section',
-              text: { type: 'mrkdwn', text: '✅ PSI結果：対象ページはありません。' }
+              type: "section",
+              text: { type: "mrkdwn", text: "✅ PSI結果：対象ページはありません。" }
             });
           } else {
             urls.slice(0, 5).forEach(url => {
               blocks.push(makeSection(url, psiResults[url]));
-              blocks.push({ type: 'divider' });
+              blocks.push({ type: "divider" });
             });
             if (urls.length > 5) {
               blocks.push({
-                type: 'section',
+                type: "section",
                 text: {
-                  type: 'mrkdwn',
+                  type: "mrkdwn",
                   text: `…他 *${urls.length - 5} ページ* 分の結果があります。詳細は GitHub の PR コメントを確認してください。`
                 }
               });
             }
           }
 
-          const payload = {
-            text: 'PageSpeed Insights 結果',
-            blocks
-          };
-
-          console.log('::set-output name=payload::' + JSON.stringify(payload));
-          "
+          const payload = { text: "PageSpeed Insights 結果", blocks };
+          console.log("::set-output name=payload::" + JSON.stringify(payload));
+          '
         env:
           result: ${{ steps.psi_analysis.outputs.result }}
+
 
       # Slack APIで通知（Block Kit）
       - name: Post PSI result to Slack via API
