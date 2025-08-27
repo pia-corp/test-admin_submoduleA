@@ -222,6 +222,69 @@ jobs:
               body: comment
             });
 
+      # リンク切れ結果をSlack向けに整形（Block Kit）
+      - name: Format Broken Links Slack BlockKit message
+        id: format-links-slack
+        run: |
+          errors='${{ steps.link-checker.outputs.errors }}'
+          node -e "
+          const errorsArray = JSON.parse(process.env.errors);
+          let blocks = [];
+          let allMessages = [];
+
+          for (let file in errorsArray) {
+            for (let i = 0; i < errorsArray[file].length; i++) {
+              allMessages.push({ file, url: errorsArray[file][i] });
+            }
+          }
+
+          if (allMessages.length === 0) {
+            blocks.push({
+              type: 'section',
+              text: { type: 'mrkdwn', text: '✅ リンク切れは検出されませんでした。' }
+            });
+          } else {
+            allMessages.slice(0, 5).forEach(item => {
+              blocks.push({
+                type: 'section',
+                text: {
+                  type: 'mrkdwn',
+                  text: `*ファイル*: \`${item.file}\`\n:link: ${item.url}`
+                }
+              });
+              blocks.push({ type: 'divider' });
+            });
+            if (allMessages.length > 5) {
+              blocks.push({
+                type: 'section',
+                text: {
+                  type: 'mrkdwn',
+                  text: `…他 *${allMessages.length - 5} 件* のリンク切れがあります。詳細は GitHub の PR コメントを確認してください。`
+                }
+              });
+            }
+          }
+
+          const payload = {
+            text: 'リンク切れレポート',
+            blocks
+          };
+
+          console.log('::set-output name=payload::' + JSON.stringify(payload));
+          "
+        env:
+          errors: ${{ steps.link-checker.outputs.errors }}
+
+      # Slack APIで通知（Block Kit）
+      - name: Post Broken Links result to Slack via API
+        run: |
+          curl -X POST \
+            -H "Authorization: Bearer ${{ secrets.SLACK_BOT_TOKEN }}" \
+            -H 'Content-type: application/json' \
+            --data '${{ steps.format-links-slack.outputs.payload }}' \
+            https://slack.com/api/chat.postMessage
+
+
   # =============================
   # 検証環境へアップロードしたURLでPSIを実行し、パフォーマンス分析を行います。
   # =============================
@@ -341,7 +404,7 @@ jobs:
         run: |
           # mainブランチと比較するためにfetch
           git fetch origin main || echo "mainブランチの取得に失敗しました。新規リポジトリの場合は無視できます。"
-          
+
           # デバッグ情報を追加
           echo "=== デバッグ情報 ==="
           echo "現在のブランチ: $(git branch --show-current)"
@@ -349,32 +412,32 @@ jobs:
           echo "origin/main: $(git rev-parse origin/main)"
           echo "PR base SHA: ${{ github.event.pull_request.base.sha }}"
           echo "PR head SHA: ${{ github.event.pull_request.head.sha }}"
-          
+
           # 全体の差分を確認
           echo "=== 全ファイル差分 ==="
           git diff --name-only origin/main HEAD || echo "差分取得失敗"
-          
+
           # 複数の方法でHTMLファイル変更を検出
           HTML_FILES=""
-          
+
           # 方法1: 通常のdiff
           FILES1=$(git diff --name-only origin/main...HEAD | grep -E 'public/.*\.html$' | sed 's#^public/##g' || echo "")
-          
+
           # 方法2: PRイベント情報から
           if [ -n "${{ github.event.pull_request.base.sha }}" ] && [ -n "${{ github.event.pull_request.head.sha }}" ]; then
             FILES2=$(git diff --name-only ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} | grep -E 'public/.*\.html$' | sed 's#^public/##g' || echo "")
           else
             FILES2=""
           fi
-          
+
           # 方法3: 最新の差分
           FILES3=$(git diff --name-only origin/main HEAD | grep -E 'public/.*\.html$' | sed 's#^public/##g' || echo "")
-          
+
           echo "=== 検出結果 ==="
           echo "方法1 (origin/main...HEAD): '$FILES1'"
           echo "方法2 (PR SHA): '$FILES2'"
           echo "方法3 (origin/main HEAD): '$FILES3'"
-          
+
           # どれかで検出されたファイルを使用（優先順位: FILES2 > FILES1 > FILES3）
           if [ -n "$FILES2" ]; then
             HTML_FILES="$FILES2"
@@ -386,10 +449,10 @@ jobs:
             HTML_FILES="$FILES3"
             echo "通常diff からHTMLファイル変更を検出"
           fi
-          
+
           # カンマ区切りに変換し、末尾のカンマを削除
           HTML_FILES=$(echo "$HTML_FILES" | tr '\n' ',' | sed 's/,$//')
-          
+
           # ファイル数をカウント
           if [ -n "$HTML_FILES" ] && [ "$HTML_FILES" != "" ]; then
             HTML_COUNT=$(echo "$HTML_FILES" | awk -F',' '{print NF}')
@@ -399,7 +462,7 @@ jobs:
             HTML_FILES=""
             HTML_COUNT=0
           fi
-          
+
           # GitHub Actions出力を設定
           echo "html_files=${HTML_FILES}" >> $GITHUB_OUTPUT
           echo "html_count=${HTML_COUNT}" >> $GITHUB_OUTPUT
@@ -410,19 +473,19 @@ jobs:
         id: fallback_check
         run: |
           FORCE_EXECUTE=false
-          
+
           # PRタイトルに [force-psi] があるかチェック
           if echo "${{ github.event.pull_request.title }}" | grep -q "\[force-psi\]"; then
             echo "PRタイトルに[force-psi]が含まれているため、強制実行します"
             FORCE_EXECUTE=true
           fi
-          
+
           # コミットメッセージに [force-psi] があるかチェック
           if git log --oneline -5 | grep -q "\[force-psi\]"; then
             echo "コミットメッセージに[force-psi]が含まれているため、強制実行します"
             FORCE_EXECUTE=true
           fi
-          
+
           # 強制実行の場合はindex.htmlを対象にする
           if [ "$FORCE_EXECUTE" = true ]; then
             echo "html_files=index.html" >> $GITHUB_OUTPUT
@@ -466,82 +529,60 @@ jobs:
               body: result
             });
 
-  create-release-tag:
-    if: always() && github.base_ref == 'main' && github.actor != 'dependabot[bot]' && startsWith(github.head_ref, 'develop')
-    needs: page_speed_analysis
-    runs-on: ubuntu-latest
-    timeout-minutes: 3
-    permissions:
-      contents: write
-
-    steps:
-      - name: リポジトリをチェックアウト
-        uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
-
-      - name: 前回のリリースタグを取得する
-        id: fetch_previous_tag
+      # PSI結果をSlack向けに整形（Block Kit）
+      - name: Format PSI Slack BlockKit message
+        id: format-psi-slack
         run: |
-          echo "pre_tag=$(curl -H 'Accept: application/vnd.github.v3+json' -H 'Authorization: token ${{ secrets.GITHUB_TOKEN }}' https://api.github.com/repos/${{ github.repository }}/releases/latest | jq -r .tag_name)" >> $GITHUB_OUTPUT
+          result='${{ steps.psi_analysis.outputs.result }}'
+          node -e "
+          const psiResults = JSON.parse(process.env.result);
+          let blocks = [];
 
-      - name: タグを生成する 「{YYYY.MM.DD}-{異なる日のリリース回数}.{当日リリース回数}」
-        id: generate_release_tag
-        run: |
-          today=$(date +'%Y.%m.%d')
-          pre_release_date=$(echo ${{ steps.fetch_previous_tag.outputs.pre_tag }} | awk -F'-' '{print $1}')
-          pre_release_count=$(echo ${{ steps.fetch_previous_tag.outputs.pre_tag }} | awk -F'-' '{print $2}')
-          if [[ ! $pre_release_date = $today ]]; then
-            pre_release_count=0
-          fi
-          echo "release_tag=$today-$(($pre_release_count + 1))" >> $GITHUB_OUTPUT
+          const makeSection = (url, r) => ({
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: `*<${url}|${url}>*\nPerformance: *${r.performance}* | Accessibility: *${r.accessibility}* | Best Practices: *${r.best_practices}* | SEO: *${r.seo}*`
+            }
+          });
 
-      - name: PRのDescriptionを取得しマークダウン形式に変換する
-        id: fetch_pr_description
-        run: |
-          echo "pr_description=$(curl -H 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
-            'https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number}}' \
-            | jq .body | awk '{if ($0 == "null") print ""; else print}')" >> $GITHUB_OUTPUT
+          const urls = Object.keys(psiResults);
+          if (urls.length === 0) {
+            blocks.push({
+              type: 'section',
+              text: { type: 'mrkdwn', text: '✅ PSI結果：対象ページはありません。' }
+            });
+          } else {
+            urls.slice(0, 5).forEach(url => {
+              blocks.push(makeSection(url, psiResults[url]));
+              blocks.push({ type: 'divider' });
+            });
+            if (urls.length > 5) {
+              blocks.push({
+                type: 'section',
+                text: {
+                  type: 'mrkdwn',
+                  text: `…他 *${urls.length - 5} ページ* 分の結果があります。詳細は GitHub の PR コメントを確認してください。`
+                }
+              });
+            }
+          }
 
-      - name: 前回リリースからの差分をもとに、変更点を取得する
-        id: generate_changes
+          const payload = {
+            text: 'PageSpeed Insights 結果',
+            blocks
+          };
+
+          console.log('::set-output name=payload::' + JSON.stringify(payload));
+          "
+        env:
+          result: ${{ steps.psi_analysis.outputs.result }}
+
+      # Slack APIで通知（Block Kit）
+      - name: Post PSI result to Slack via API
         run: |
-          echo "changes=$(
           curl -X POST \
-            -H 'Accept: application/vnd.github.v3+json' \
-            -H 'Authorization: token ${{ secrets.GITHUB_TOKEN }}' \
-            https://api.github.com/repos/${{ github.repository }}/releases/generate-notes \
-            -d '{
-              "tag_name": "${{ steps.generate_release_tag.outputs.release_tag }}",
-              "previous_tag_name": "${{ steps.fetch_previous_tag.outputs.pre_tag }}",
-              "target_commitish": "main"
-            }' | jq .body
-          )" >> $GITHUB_OUTPUT
-
-      - name: リリースノートの本文を作成する
-        id: prepare_release_note
-        run: |
-          echo "release_note_body=$(echo \
-            ${{ steps.fetch_pr_description.outputs.pr_description }} \
-            ${{ steps.generate_changes.outputs.changes }} \
-            | sed 's/\\"//g' | sed 's/["“]//g')" >> $GITHUB_OUTPUT
-
-      - name: タグを切り、リリースノートを作成する
-        run: |
-          response=$(curl -X POST \
-            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            -d "{ \
-              \"tag_name\": \"${{ steps.generate_release_tag.outputs.release_tag }}\", \
-              \"target_commitish\": \"main\", \
-              \"name\": \"${{ steps.generate_release_tag.outputs.release_tag }}\", \
-              \"body\": \"${{ steps.prepare_release_note.outputs.release_note_body }}\" \
-            }" \
-            -w "%{http_code}" \
-            -o response_body.txt \
-            https://api.github.com/repos/${{ github.repository }}/releases)
-            status_code=$(tail -n1 <<< "$response")
-            echo "Status Code: $status_code"
-            body=$(cat response_body.txt)
-            echo "Response Body: $body"
-            if [ $status_code -ne 201 ]; then
-              echo "::error:: リリースの作成に失敗しました。"
-              exit 1
-            fi
+            -H "Authorization: Bearer ${{ secrets.SLACK_BOT_TOKEN }}" \
+            -H 'Content-type: application/json' \
+            --data '${{ steps.format-psi-slack.outputs.payload }}' \
+            https://slack.com/api/chat.postMessage
