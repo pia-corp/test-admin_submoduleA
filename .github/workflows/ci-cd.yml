@@ -533,36 +533,54 @@ jobs:
         run: |
           result='${{ steps.psi_analysis.outputs.result }}'
           node -e '
-          const psiResults = process.env.result;
+          const psiResultMarkdown = process.env.result;
           let blocks = [];
 
-          const makeSection = (url, r) => ({
-            type: "section",
-            text: {
-              type: "mrkdwn",
-              text: `*<${url}|${url}>*\nPerformance: *${r.performance}* | Accessibility: *${r.accessibility}* | Best Practices: *${r.best_practices}* | SEO: *${r.seo}*`
-            }
-          });
-
-          const urls = Object.keys(psiResults);
-          if (urls.length === 0) {
+          // マークダウン結果をSlackメッセージに変換
+          if (!psiResultMarkdown || psiResultMarkdown.includes("No PageSpeed Insights results") || psiResultMarkdown.includes("No HTML files changed")) {
             blocks.push({
               type: "section",
               text: { type: "mrkdwn", text: "✅ PSI結果：対象ページはありません。" }
             });
           } else {
-            urls.slice(0, 5).forEach(url => {
-              blocks.push(makeSection(url, psiResults[url]));
-              blocks.push({ type: "divider" });
+            // マークダウンの内容をSlackブロックに変換
+            blocks.push({
+              type: "section", 
+              text: {
+                type: "mrkdwn",
+                text: "📊 *PageSpeed Insights 結果*\n詳細は GitHub の PR コメントを確認してください。"
+              }
             });
-            if (urls.length > 5) {
-              blocks.push({
-                type: "section",
-                text: {
-                  type: "mrkdwn",
-                  text: `…他 *${urls.length - 5} ページ* 分の結果があります。詳細は GitHub の PR コメントを確認してください。`
+            
+            // マークダウンテーブルからスコア情報を抽出
+            const lines = psiResultMarkdown.split("\n");
+            let tableStarted = false;
+            let processedCount = 0;
+            
+            for (const line of lines) {
+              if (line.includes("| Path | Performance |")) {
+                tableStarted = true;
+                continue;
+              }
+              if (tableStarted && line.includes("|") && !line.includes("--") && processedCount < 3) {
+                const cols = line.split("|").map(col => col.trim()).filter(col => col);
+                if (cols.length >= 5) {
+                  const path = cols[0].replace(/\[([^\]]+)\]\([^)]+\)/, "$1");
+                  const performance = cols[1];
+                  const accessibility = cols[2]; 
+                  const bestPractices = cols[3];
+                  const seo = cols[4];
+                  
+                  blocks.push({
+                    type: "section",
+                    text: {
+                      type: "mrkdwn", 
+                      text: `*${path}*\nPerformance: ${performance} | Accessibility: ${accessibility} | Best Practices: ${bestPractices} | SEO: ${seo}`
+                    }
+                  });
+                  processedCount++;
                 }
-              });
+              }
             }
           }
 
