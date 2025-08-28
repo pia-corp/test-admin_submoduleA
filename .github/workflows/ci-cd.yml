@@ -241,7 +241,7 @@ jobs:
             type: "section",
             text: {
               type: "mrkdwn",
-              text: "🔗 *Broken Links 結果*"
+              text: "<!S0771DFH4BC|sg_seisaku>\n🔗 *Broken Links 結果*"
             }
           });
           if (allMessages.length === 0) {
@@ -265,7 +265,15 @@ jobs:
                 type: "section",
                 text: {
                   type: "mrkdwn",
-                  text: `…他 *${allMessages.length - 5} 件* のリンク切れがあります。詳細は GitHub の PR コメントを確認してください。`
+                  text: `…他 *${allMessages.length - 5} 件* のリンク切れがあります。詳細は <${{ github.event.pull_request.html_url }}|GitHub の PR コメント> を確認してください。`
+                }
+              });
+            } else {
+              blocks.push({
+                type: "section",
+                text: {
+                  type: "mrkdwn",
+                  text: `詳細は <${{ github.event.pull_request.html_url }}|GitHub の PR コメント> を確認してください。`
                 }
               });
             }
@@ -555,7 +563,7 @@ jobs:
               type: "section",
               text: {
                 type: "mrkdwn",
-                text: "📊 *PageSpeed Insights 結果*\n詳細は GitHub の PR コメントを確認してください。"
+                text: "<!S0771DFH4BC|sg_seisaku>\n📊 *PageSpeed Insights 結果*\n"
               }
             });
 
@@ -589,6 +597,14 @@ jobs:
                 }
               }
             }
+
+            blocks.push({
+              type: "section",
+              text: {
+                type: "mrkdwn",
+                text: `詳細は <${{ github.event.pull_request.html_url }}|GitHub の PR コメント> を確認してください。`
+              }
+            });
           }
 
           const payload = { text: "PageSpeed Insights 結果", blocks };
