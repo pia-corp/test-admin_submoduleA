@@ -237,6 +237,13 @@ jobs:
             }
           }
 
+          blocks.push({
+            type: "section",
+            text: {
+              type: "mrkdwn",
+              text: "🔗 *Broken Links 結果*"
+            }
+          });
           if (allMessages.length === 0) {
             blocks.push({
               type: "section",
@@ -248,7 +255,7 @@ jobs:
                 type: "section",
                 text: {
                   type: "mrkdwn",
-                  text: `*ファイル*: \`${item.file}\`\n:link: ${item.url}`
+                  text: `*ファイル*: \`${item.file}\`\n ${item.url}`
                 }
               });
               blocks.push({ type: "divider" });
@@ -545,18 +552,18 @@ jobs:
           } else {
             // マークダウンの内容をSlackブロックに変換
             blocks.push({
-              type: "section", 
+              type: "section",
               text: {
                 type: "mrkdwn",
                 text: "📊 *PageSpeed Insights 結果*\n詳細は GitHub の PR コメントを確認してください。"
               }
             });
-            
+
             // マークダウンテーブルからスコア情報を抽出
             const lines = psiResultMarkdown.split("\n");
             let tableStarted = false;
             let processedCount = 0;
-            
+
             for (const line of lines) {
               if (line.includes("| Path | Performance |")) {
                 tableStarted = true;
@@ -566,15 +573,15 @@ jobs:
                 const cols = line.split("|").map(col => col.trim()).filter(col => col);
                 if (cols.length >= 5) {
                   const path = cols[0].replace(/\[([^\]]+)\]\([^)]+\)/, "$1");
-                  const performance = cols[1];
-                  const accessibility = cols[2]; 
-                  const bestPractices = cols[3];
-                  const seo = cols[4];
-                  
+                  const performance = cols[1].replace(/:green_circle:/, "🟢").replace(/:orange_circle:/, "🟠").replace(/:red_circle:/, "🔴");
+                  const accessibility = cols[2].replace(/:green_circle:/, "🟢").replace(/:orange_circle:/, "🟠").replace(/:red_circle:/, "🔴");
+                  const bestPractices = cols[3].replace(/:green_circle:/, "🟢").replace(/:orange_circle:/, "🟠").replace(/:red_circle:/, "🔴");
+                  const seo = cols[4].replace(/:green_circle:/, "🟢").replace(/:orange_circle:/, "🟠").replace(/:red_circle:/, "🔴");
+
                   blocks.push({
                     type: "section",
                     text: {
-                      type: "mrkdwn", 
+                      type: "mrkdwn",
                       text: `*${path}*\nPerformance: ${performance} | Accessibility: ${accessibility} | Best Practices: ${bestPractices} | SEO: ${seo}`
                     }
                   });
