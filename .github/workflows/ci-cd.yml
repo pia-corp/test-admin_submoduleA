@@ -241,7 +241,7 @@ jobs:
             type: "section",
             text: {
               type: "mrkdwn",
-              text: "<!subteam^S0771DFH4BC|sg_seisaku>\n🔗 *Broken Links 結果*"
+              text: "<!subteam^S0771DFH4BC|sg_seisaku>\n🔗 *Broken Links 結果*\n*リポジトリ: ${{ github.event.repository.name }}*"
             }
           });
           if (allMessages.length === 0) {
@@ -563,7 +563,7 @@ jobs:
               type: "section",
               text: {
                 type: "mrkdwn",
-                text: "<!subteam^S0771DFH4BC|sg_seisaku>\n📊 *PageSpeed Insights 結果*\n"
+                text: "<!subteam^S0771DFH4BC|sg_seisaku>\n📊 *PageSpeed Insights 結果*\n*リポジトリ: ${{ github.event.repository.name }}*"
               }
             });
 
