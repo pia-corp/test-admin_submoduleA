@@ -584,19 +584,19 @@ jobs:
                   const linkMatch = cols[0].match(/\[([^\]]+)\]\(([^)]+)\)/);
                   const path = linkMatch ? linkMatch[1] : cols[0];
                   const psiUrl = linkMatch ? linkMatch[2] : null;
-                  
+
                   const performance = cols[1].replace(/:green_circle:/, "🟢").replace(/:orange_circle:/, "🟠").replace(/:red_circle:/, "🔴");
                   const accessibility = cols[2].replace(/:green_circle:/, "🟢").replace(/:orange_circle:/, "🟠").replace(/:red_circle:/, "🔴");
                   const bestPractices = cols[3].replace(/:green_circle:/, "🟢").replace(/:orange_circle:/, "🟠").replace(/:red_circle:/, "🔴");
                   const seo = cols[4].replace(/:green_circle:/, "🟢").replace(/:orange_circle:/, "🟠").replace(/:red_circle:/, "🔴");
 
                   const pathDisplay = psiUrl ? `<${psiUrl}|${path}>` : `*${path}*`;
-                  
+
                   blocks.push({
                     type: "section",
                     text: {
                       type: "mrkdwn",
-                      text: `${pathDisplay}\nPerformance: ${performance} | Accessibility: ${accessibility} | Best Practices: ${bestPractices} | SEO: ${seo}`
+                      text: `${pathDisplay} | Performance: ${performance} | Accessibility: ${accessibility} | Best Practices: ${bestPractices} | SEO: ${seo}`
                     }
                   });
                   processedCount++;
