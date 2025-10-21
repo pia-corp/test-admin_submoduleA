@@ -263,6 +263,7 @@ jobs:
       - name: リポジトリをチェックアウト
         uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
         with:
+          fetch-depth: 0  # 全履歴を取得して差分検出を可能にする
           persist-credentials: false  # 不要な認証情報を保持しない
 
       - name: SSH接続の設定
@@ -339,57 +340,30 @@ jobs:
       - name: 変更されたHTMLファイルを抽出
         id: extract_html_diff
         run: |
-          # mainブランチと比較するためにfetch
-          git fetch origin main || echo "mainブランチの取得に失敗しました。新規リポジトリの場合は無視できます。"
-          
-          # デバッグ情報を追加
+          # デバッグ情報を出力
           echo "=== デバッグ情報 ==="
           echo "現在のブランチ: $(git branch --show-current)"
           echo "HEAD: $(git rev-parse HEAD)"
-          echo "origin/main: $(git rev-parse origin/main)"
           echo "PR base SHA: ${{ github.event.pull_request.base.sha }}"
           echo "PR head SHA: ${{ github.event.pull_request.head.sha }}"
-          
-          # 全体の差分を確認
-          echo "=== 全ファイル差分 ==="
-          git diff --name-only origin/main HEAD || echo "差分取得失敗"
-          
-          # 複数の方法でHTMLファイル変更を検出
-          HTML_FILES=""
-          
-          # 方法1: 通常のdiff
-          FILES1=$(git diff --name-only origin/main...HEAD | grep -E 'public/.*\.html$' | sed 's#^public/##g' || echo "")
-          
-          # 方法2: PRイベント情報から
+
+          # PRのbase SHAとhead SHAを使って差分を取得
+          # この方法はfetch不要で、既にチェックアウトされているコミット履歴から取得可能
           if [ -n "${{ github.event.pull_request.base.sha }}" ] && [ -n "${{ github.event.pull_request.head.sha }}" ]; then
-            FILES2=$(git diff --name-only ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }} | grep -E 'public/.*\.html$' | sed 's#^public/##g' || echo "")
+            echo "=== PR差分からHTMLファイルを検出 ==="
+            HTML_FILES=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} | grep -E 'public/.*\.html$' | sed 's#^public/##g' || echo "")
           else
-            FILES2=""
+            echo "エラー: PR情報が取得できません"
+            HTML_FILES=""
           fi
-          
-          # 方法3: 最新の差分
-          FILES3=$(git diff --name-only origin/main HEAD | grep -E 'public/.*\.html$' | sed 's#^public/##g' || echo "")
-          
-          echo "=== 検出結果 ==="
-          echo "方法1 (origin/main...HEAD): '$FILES1'"
-          echo "方法2 (PR SHA): '$FILES2'"
-          echo "方法3 (origin/main HEAD): '$FILES3'"
-          
-          # どれかで検出されたファイルを使用（優先順位: FILES2 > FILES1 > FILES3）
-          if [ -n "$FILES2" ]; then
-            HTML_FILES="$FILES2"
-            echo "PRイベント情報からHTMLファイル変更を検出"
-          elif [ -n "$FILES1" ]; then
-            HTML_FILES="$FILES1"
-            echo "three-dot diff からHTMLファイル変更を検出"
-          elif [ -n "$FILES3" ]; then
-            HTML_FILES="$FILES3"
-            echo "通常diff からHTMLファイル変更を検出"
-          fi
-          
+
+          # デバッグ: 検出されたファイル
+          echo "検出されたHTMLファイル:"
+          echo "$HTML_FILES"
+
           # カンマ区切りに変換し、末尾のカンマを削除
           HTML_FILES=$(echo "$HTML_FILES" | tr '\n' ',' | sed 's/,$//')
-          
+
           # ファイル数をカウント
           if [ -n "$HTML_FILES" ] && [ "$HTML_FILES" != "" ]; then
             HTML_COUNT=$(echo "$HTML_FILES" | awk -F',' '{print NF}')
@@ -399,7 +373,7 @@ jobs:
             HTML_FILES=""
             HTML_COUNT=0
           fi
-          
+
           # GitHub Actions出力を設定
           echo "html_files=${HTML_FILES}" >> $GITHUB_OUTPUT
           echo "html_count=${HTML_COUNT}" >> $GITHUB_OUTPUT
