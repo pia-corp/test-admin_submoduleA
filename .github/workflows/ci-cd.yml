@@ -324,7 +324,7 @@ jobs:
 
       # デプロイ処理
       - name: 検証環境へファイルをデプロイ
-        uses: milanmk/actions-file-deployer@3cf188f493103b5f12f11221186f8fbd07f2be10 # 1.16
+        uses: milanmk/actions-file-deployer@a00e148bb1217946578a008944d5ead78974c405 # 1.17
         with:
           remote-protocol: 'sftp'
           remote-host: ${{ env.DEV_SERVER_HOST }}
